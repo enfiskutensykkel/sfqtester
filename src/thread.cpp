@@ -1,6 +1,5 @@
 #include <pthread.h>
 #include <cstddef>
-#include <cstdio>
 #include "thread.h"
 
 
@@ -20,7 +19,7 @@ Thread::Thread() :
 
 	// Initialize some thread attributes
 	pthread_attr_setstacksize(&attr, 16000);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
 	// Try to create a thread
@@ -47,7 +46,7 @@ Thread::Thread() :
  */
 Thread::~Thread()
 {
-	// Call stop. Note that this will *not* call stop for a derived class.
+	// Stop thread
 	stop();
 
 	// Destroy synchronization primitives
@@ -75,9 +74,6 @@ void Thread::start()
 }
 
 
-/*
- * Stop the thread
- */
 void Thread::stop()
 {
 	pthread_mutex_lock(&mutex);
@@ -88,12 +84,13 @@ void Thread::stop()
 		if (state != RUNNING) {
 			state = STOPPED;
 			pthread_cond_signal(&start_signal);
+			pthread_cond_wait(&stop_signal, &mutex);
 		}
 
 		// Wait for the thread to finish up, we assume that the derived class'
 		// stop() implementation has been called, and that run() behaves properly.
-		pthread_cond_wait(&stop_signal, &mutex);
 		state = STOPPED;
+		pthread_join(id, NULL);
 	}
 	pthread_mutex_unlock(&mutex);
 }
@@ -120,12 +117,8 @@ void* Thread::dispatch(void* object)
 	// Call the run() method of the derived class
 	if (run) {
 		thread->run();
-	}
-
-	pthread_mutex_lock(&thread->mutex);
-	// Notify parent thread that we are shutting down
-	pthread_cond_broadcast(&thread->stop_signal);
-	pthread_mutex_unlock(&thread->mutex);
-
+	} 
+		
+	pthread_cond_signal(&thread->stop_signal);
 	pthread_exit(NULL);
 }
