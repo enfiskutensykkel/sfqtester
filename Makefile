@@ -8,7 +8,7 @@ LDLIBS := pthread stdc++ rt
 SRC := $(shell find src/ -type f -regextype posix-extended -regex ".+\.(c|cpp)")
 HDR := $(shell find src/ -type f -regextype posix-extended -regex ".+\.h")
 ALL := $(SRC) $(HDR) README.md Makefile
-DEF := 
+DEF := BUFFER_SIZE=4096
 OBJ := $(filter %.o,$(SRC:src/%.c=build/%.o)) $(filter %.o,$(SRC:src/%.cpp=build/%.o))
 
 .PHONY: $(NAME) all clean realclean todo
