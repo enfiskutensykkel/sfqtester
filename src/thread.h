@@ -18,28 +18,16 @@ class Thread
 		
 		/*
 		 * Start the thread
-		 *
-		 * This method must be called from a derived class if overridden
 		 */
 		virtual void start(void);
 
-		/*
+		/* 
 		 * Stop the thread
-		 *
-		 * This method *must* be overridden, and it must be called as the
-		 * very last thing of a derived class. If start() is called from
-		 * the client code, then this method *must* also be called, otherwise
-		 * bad things will happen.
 		 */
 		virtual void stop(void);
 
 		/*
 		 * Do thread action
-		 *
-		 * This method must be implemented by a derived class.
-		 * It should not return, until stop() is called.
-		 * When stop() is called on the derived class, this method *must*
-		 * return, otherwise bad things will happen.
 		 */
 		virtual void run(void) = 0;
 
