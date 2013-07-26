@@ -1,7 +1,21 @@
+#include <tr1/memory>
+#include <vector>
 #include <cstdlib>
 #include <cstdio>
 #include <signal.h>
 #include <getopt.h>
+#include "barrier.h"
+
+using std::vector;
+using std::tr1::shared_ptr;
+
+
+
+void terminate(void)
+{
+}
+
+
 
 int main(int argc, char** argv)
 {
@@ -11,22 +25,28 @@ int main(int argc, char** argv)
 	unsigned interval = 0;
 	unsigned length = 0;
 
+	// Parse program arguments and options
 	int opt;
 	while ((opt = getopt(argc, argv, ":hc:p:q:n:i:")) != -1) {
 		char* ptr;
 		switch (opt) {
+
+			// Missing a value for the option
 			case ':':
 				fprintf(stderr, "Option %s requires a value\n", argv[optind-1]);
 				return ':';
 
+			// Unknown option was given
 			case '?':
 				fprintf(stderr, "Ignoring unknown option '%c'\n", optopt);
 				break;
 
+			// Print program usage and quit
 			case 'h':
 				// TODO: Give usage
 				return 'h';
 
+			// Set number of connections
 			case 'c':
 				ptr = NULL;
 				if ((num_conn = strtoul(optarg, &ptr, 0)) > 1024 || num_conn < 1 || ptr == NULL || *ptr != '\0') {
@@ -35,6 +55,7 @@ int main(int argc, char** argv)
 				}
 				break;
 
+			// Set the remote starting port
 			case 'p':
 				ptr = NULL;
 				if ((rem_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
@@ -43,6 +64,7 @@ int main(int argc, char** argv)
 				}
 				break;
 
+			// Set the local starting port
 			case 'q':
 				ptr = NULL;
 				if ((loc_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
@@ -51,6 +73,7 @@ int main(int argc, char** argv)
 				}
 				break;
 
+			// Set the size of the byte chunk to be sent
 			case 'n':
 				ptr = NULL;
 				if ((length = strtoul(optarg, &ptr, 0)) > BUFFER_SIZE || ptr == NULL || *ptr != '\0') {
@@ -59,6 +82,7 @@ int main(int argc, char** argv)
 				}
 				break;
 
+			// Set the interval between each time a chunk is sent
 			case 'i':
 				ptr = NULL;
 				if ((interval = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
@@ -69,6 +93,7 @@ int main(int argc, char** argv)
 		}
 	}
 
+	// Check if all mandatory options were set
 	if (optind < argc && rem_port == 0) {
 		fprintf(stderr, "Option -p is required for client\n");
 		return 'p';
@@ -77,6 +102,12 @@ int main(int argc, char** argv)
 		return 'q';
 	}
 
+
+	// Handle interrupt signal
+	signal(SIGINT, (void (*)(int)) &terminate);
+
+	// Create a barrier
+	Barrier barrier(num_conn);
 
 	return 0;
 }
