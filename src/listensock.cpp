@@ -40,7 +40,7 @@ ListenSock* ListenSock::create(uint16_t port)
 	addrinfo *ptr, *info = NULL;
 
 	// Find info about the service/port
-	if (!load_addrinfo(info, NULL, port)) {
+	if (!Sock::load_addrinfo(info, NULL, port)) {
 		if (info != NULL) {
 			freeaddrinfo(info);
 		}
@@ -82,3 +82,8 @@ ListenSock* ListenSock::create(uint16_t port)
 }
 
 
+vector<shared_ptr<Sock> > ListenSock::get_socks()
+{
+	vector<shared_ptr<Sock> > list;
+	return list;
+}

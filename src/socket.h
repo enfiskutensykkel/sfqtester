@@ -82,15 +82,18 @@ class Sock
 				);
 
 	private:
+		friend class ListenSock;
 		std::tr1::shared_ptr<int> sock;
+
+		/*
+		 * Allocate and fill a struct addrinfo with information about a host 
+		 * and/or service running on a specific port.
+		 */
+		static bool load_addrinfo(
+				addrinfo*& addr_info, 
+				const char* hostname, 
+				uint16_t port
+				);
 };
-
-
-
-/*
- * Allocate and fill a struct addrinfo with information about a host and/or 
- * service running on a specific port.
- */
-bool load_addrinfo(addrinfo*& addr_info, const char* hostname, uint16_t port);
 
 #endif
