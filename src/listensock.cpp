@@ -1,6 +1,5 @@
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <tr1/memory>
 #include <tr1/cstdint>
 #include <cstdlib>
 #include <string>
@@ -10,28 +9,33 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <string.h>
+#include <sys/time.h>
+#include <sys/select.h>
+#include <fcntl.h>
 #include "socket.h"
 
 using std::vector;
 using std::tr1::shared_ptr;
 
 
-static void close_sock(int* s)
-{
-	if (*s != -1) {
-		::close(*s);
-	}
-
-	delete s;
-}
-
-
 /*
  * Listen for incoming connections.
  */
-ListenSock::ListenSock(int sock) :
-	listen_sock( new int(sock), &close_sock )
+ListenSock::ListenSock(int sock)
 {
+	listen_sock = sock;
+
+	// Initialize descriptor set
+	FD_ZERO(&all_fds);
+	FD_SET(listen_sock, &all_fds);
+	hi_sock = listen_sock;
+}
+
+
+ListenSock::~ListenSock()
+{
+	::close(listen_sock);
+	FD_ZERO(&all_fds);
 }
 
 
@@ -84,6 +88,46 @@ ListenSock* ListenSock::create(uint16_t port)
 
 vector<shared_ptr<Sock> > ListenSock::get_socks()
 {
-	vector<shared_ptr<Sock> > list;
-	return list;
+	vector<shared_ptr<Sock> > active_list;
+	fd_set active = all_fds;
+
+
+	// Select the number of descriptors with any events
+	timeval wait = {0, 0};
+	int num_active = select(hi_sock + 1, &active, NULL, NULL, &wait);
+	if (num_active == -1) {
+		// TODO: Error handling for select returning -1
+		return active_list;
+	}
+
+	// Accept any incomming connections
+	if (FD_ISSET(listen_sock, &active)) {
+		int sock = accept(listen_sock, NULL, NULL);
+
+		if (sock != -1) {
+			fprintf(stderr, "got new sock %d\n", sock);
+			// Add the new descriptor to the descriptor set
+			FD_SET(sock, &all_fds);
+			hi_sock = sock > hi_sock ? sock : hi_sock;
+			socks.push_back(shared_ptr<Sock>( new Sock(sock) ));
+		}
+		// TODO: Error handling for accept returning -1
+		
+		--num_active;
+	}
+
+
+	vector<shared_ptr<Sock> >::iterator it = socks.begin();
+	while (num_active > 0 && it != socks.end()) {
+
+		shared_ptr<Sock> sock = *it;
+		
+		// Found active descriptor
+		if (FD_ISSET(*sock->sock, &active)) {
+			active_list.push_back(sock);
+			--num_active;
+		} 
+	}
+
+	return active_list;
 }

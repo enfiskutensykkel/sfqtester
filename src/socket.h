@@ -1,10 +1,12 @@
 #ifndef __SOCKET_H__
 #define __SOCKET_H__
 
+#include <cstddef>
 #include <tr1/cstdint>
 #include <tr1/memory>
 #include <vector>
 #include <netdb.h>
+#include <sys/select.h>
 
 class Sock;
 
@@ -17,6 +19,7 @@ class Sock;
 class ListenSock 
 {
 	public:
+		~ListenSock(void);
 	
 		/*
 		 * Get a vector containing the sockets that have something interesting
@@ -30,8 +33,14 @@ class ListenSock
 		static ListenSock* create(uint16_t port);
 
 	private:
-		std::tr1::shared_ptr<int> listen_sock;
+		std::vector<std::tr1::shared_ptr<Sock> > socks;
+		int listen_sock;
+		fd_set all_fds;
+		int hi_sock, num_active;
 		ListenSock(int socket_descriptor);
+
+		ListenSock& operator=(const ListenSock& other);
+		ListenSock(const ListenSock& other);
 };
 
 
@@ -45,9 +54,14 @@ class Sock
 {
 	public:
 		/*
-		 * Get the raw socket descriptor.
+		 * Read data from a connection.
 		 */
-		int get_fd(void);
+		ssize_t read(char* buffer, size_t buffer_length);
+
+		/*
+		 * Write data to a connection.
+		 */
+		ssize_t write(const char* buffer, size_t buffer_length);
 
 		/*
 		 * Validate that the descriptor is still valid and that the connection

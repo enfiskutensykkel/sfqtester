@@ -1,7 +1,6 @@
 #ifndef __STREAMER_H__
 #define __STREAMER_H__
 
-#include <vector>
 #include <tr1/cstdint>
 #include <cstddef>
 #include "thread.h"
@@ -25,7 +24,6 @@ class Client : public Thread
 
 	private:
 		Barrier& barr;
-		int sock;
 		const char* hostname;
 		uint16_t rem_port;
 		uint16_t loc_port;
@@ -47,8 +45,8 @@ class Server : public Thread
 
 	private:
 		Barrier& barr;
-		std::vector<int> socks;
 		uint16_t port;
+		char* buf;
 		bool active;
 };
 
