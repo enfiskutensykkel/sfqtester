@@ -5,14 +5,20 @@
 #include <signal.h>
 #include <getopt.h>
 #include "barrier.h"
+#include "streamer.h"
+#include "socket.h"
+#include <unistd.h>
 
 using std::vector;
 using std::tr1::shared_ptr;
 
 
+static bool run = true;
 
-void terminate(void)
+
+static void terminate(void)
 {
+	run = false;
 }
 
 
@@ -107,7 +113,15 @@ int main(int argc, char** argv)
 	signal(SIGINT, (void (*)(int)) &terminate);
 
 	// Create a barrier
-	Barrier barrier(num_conn);
+	Barrier barrier(num_conn + 1);
+
+	// Test streamer
+	Client client(barrier, "localhost", 5000);
+
+	client.start();
+	barrier.wait();
+
+	while (run);
 
 	return 0;
 }
