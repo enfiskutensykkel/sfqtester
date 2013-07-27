@@ -16,7 +16,6 @@ class Sock;
  */
 class ListenSock 
 {
-
 	public:
 	
 		/*
@@ -45,12 +44,6 @@ class ListenSock
 class Sock
 {
 	public:
-
-		/*
-		 * Create a new instance.
-		 */
-		Sock(int socket_descriptor);
-
 		/*
 		 * Get the raw socket descriptor.
 		 */
@@ -83,7 +76,11 @@ class Sock
 
 	private:
 		friend class ListenSock;
+
 		std::tr1::shared_ptr<int> sock;
+
+		/* Create new instance */
+		Sock(int socket_descriptor);
 
 		/*
 		 * Allocate and fill a struct addrinfo with information about a host 
