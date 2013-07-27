@@ -6,6 +6,36 @@
 #include <vector>
 #include <netdb.h>
 
+class Sock;
+
+
+/*
+ * Socket descriptor wrapper
+ *
+ * Manages multiple connections from remote hosts.
+ */
+class ListenSock 
+{
+
+	public:
+	
+		/*
+		 * Get a vector containing the sockets that have something interesting
+		 * to report.
+		 */	
+		std::vector<std::tr1::shared_ptr<Sock> > get_socks(void);
+
+		/* 
+		 * Create a socket descriptor to listen for incomming connections.
+		 */
+		static ListenSock* create(uint16_t port);
+
+	private:
+		std::tr1::shared_ptr<int> listen_sock;
+		ListenSock(int socket_descriptor);
+};
+
+
 
 /*
  * Socket descriptor wrapper
@@ -15,6 +45,12 @@
 class Sock
 {
 	public:
+
+		/*
+		 * Create a new instance.
+		 */
+		Sock(int socket_descriptor);
+
 		/*
 		 * Get the raw socket descriptor.
 		 */
@@ -45,36 +81,8 @@ class Sock
 				uint16_t port
 				);
 
-
 	private:
 		std::tr1::shared_ptr<int> sock;
-		Sock(int socket_descriptor);
-};
-
-
-/*
- * Socket descriptor wrapper
- *
- * Manages multiple connections from remote hosts.
- */
-class ListenSock 
-{
-
-	public:
-	
-		/*
-		 * Get a vector containing the sockets that have something interesting
-		 * to report.
-		 */	
-		std::vector<int> get_fds(void);
-
-		/* 
-		 * Create a socket descriptor to listen for incomming connections.
-		 */
-		static ListenSock* create(uint16_t port);
-
-	private:
-		ListenSock(int socket_descriptor);
 };
 
 
