@@ -3,7 +3,7 @@
 
 
 /*
- * Initialize the barrier
+ * Initialize the barrier.
  */
 Barrier::Barrier(int threads) :
 	num_threads(threads),
@@ -15,7 +15,7 @@ Barrier::Barrier(int threads) :
 
 
 /* 
- * Destroy the barrier
+ * Destroy the barrier.
  */
 Barrier::~Barrier()
 {
@@ -26,7 +26,7 @@ Barrier::~Barrier()
 
 
 /*
- * Synchronize threads
+ * Synchronize threads.
  */
 void Barrier::wait()
 {

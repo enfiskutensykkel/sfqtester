@@ -46,8 +46,8 @@ Thread::Thread() :
  */
 Thread::~Thread()
 {
-	// Stop thread
-	stop();
+	// Stop thread by calling Thread::stop (not any derived version!)
+	stop(); 
 
 	// Destroy synchronization primitives
 	pthread_attr_destroy(&attr);
@@ -118,7 +118,7 @@ void* Thread::dispatch(void* object)
 	if (run) {
 		thread->run();
 	} 
-		
+
 	pthread_cond_signal(&thread->stop_signal);
 	pthread_exit(NULL);
 }
