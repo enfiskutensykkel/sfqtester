@@ -31,8 +31,8 @@ class Client : public Stream
 {
 	public:
 		Client(Barrier& barrier, const char* hostname, uint16_t port);
+		Client(Barrier& barrier, const char* hostname, uint16_t remote_port, uint16_t local_port);
 
-		void bind(uint16_t local_port);
 		void set_chunk_size(size_t bytes);
 		void set_interval(unsigned ms);
 

@@ -19,9 +19,14 @@ Client::Client(Barrier& barrier, const char* host, uint16_t port) :
 }
 
 
-void Client::bind(uint16_t port)
+Client::Client(Barrier& barrier, const char* host, uint16_t r_port, uint16_t l_port) :
+	Stream(barrier),
+	hostname(host),
+	rem_port(r_port),
+	loc_port(l_port),
+	buflen(BUFFER_SIZE),
+	ival(0)
 {
-	loc_port = port;
 }
 
 
