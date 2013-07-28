@@ -115,9 +115,10 @@ int main(int argc, char** argv)
 	// Create a barrier
 	Barrier barrier(num_conns + 1);
 
-	// Start connections
 	vector<shared_ptr<Stream> > conns;
 	
+	// Start connections
+	fprintf(stderr, "Starting %u connections...\n", num_conns);
 	for (unsigned i = 0; i < num_conns; ++i) {
 		if (optind < argc) {
 			Client* client = new Client(barrier, argv[optind], remote_port);
@@ -125,14 +126,19 @@ int main(int argc, char** argv)
 				client->bind(local_port + i);
 			}
 
+			client->start();
 			conns.push_back(shared_ptr<Stream>( static_cast<Stream*>(client) ));
 		} else {
-			conns.push_back(shared_ptr<Stream>( new Server(barrier, local_port + i) ));
+			Server* server = new Server(barrier, local_port + i);
+			server->start();
+			conns.push_back(shared_ptr<Stream>( static_cast<Stream*>(server) ));
 		}
 	}
 	
 	// Synchronize with connections
 	barrier.wait();
+
+	// TODO: Count number of established connections
 
 	// Run until completion
 	while (run);
