@@ -2,12 +2,15 @@
 #include <sys/socket.h>
 #include <sstream>
 #include <tr1/cstdint>
+#include <cstddef>
 #include <cstdlib>
 #include <cstdio>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <string.h>
+#include <errno.h>
+#include <fcntl.h>
 #include "socket.h"
 
 
@@ -55,6 +58,7 @@ bool bind_port(int sock, uint16_t port)
 static void close_sock(int* s)
 {
 	if (*s != -1) {
+		fprintf(stderr, "Closing socket %d\n", *s);
 		::close(*s);
 	}
 
@@ -68,15 +72,7 @@ static void close_sock(int* s)
 Sock::Sock(int descriptor) :
 	sock( new int(descriptor), &close_sock )
 {
-}
-
-
-/*
- * Get the socket descriptor.
- */
-int Sock::get_fd()
-{
-	return *sock;
+	// TODO: Set the descriptor to non-blocking
 }
 
 
@@ -85,8 +81,12 @@ int Sock::get_fd()
  */
 bool Sock::alive()
 {
-	// TODO: Copy the validation from streamzero_client_streams
-	return *sock != -1;
+	if (*sock == -1 || (fcntl(*sock, F_GETFL) == -1 && errno == EBADF)) {
+		*sock = -1;
+		return false;
+	}
+
+	return true;
 }
 
 
@@ -151,4 +151,52 @@ Sock* Sock::create(const char* host, uint16_t remote_port, uint16_t local_port)
 Sock* Sock::create(const char* hostname, uint16_t port)
 {
 	return create(hostname, port, 0);
+}
+
+
+/*
+ * Read data from the connection.
+ */
+ssize_t Sock::read(char* buf, size_t len, double& time)
+{
+	if (*sock != -1) {
+		ssize_t bytes = recv(*sock, buf, len, MSG_DONTWAIT);
+
+		if (bytes <= 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+			return 0;
+		} else if (bytes == 0) {
+			// Remote end closed the connection
+			close(*sock);
+			*sock = -1;
+			return -1;
+		} else if (bytes == -1) {
+			// TODO: Error handling
+			return -1;
+		}
+
+		return bytes;
+	}
+
+	return -1;
+}
+
+
+/*
+ * Write data to a connection
+ */
+ssize_t Sock::write(const char* buf, size_t len, double& time)
+{
+	if (*sock != -1) {
+		ssize_t bytes = send(*sock, buf, len, MSG_DONTWAIT);
+
+		if (bytes == -1) {
+			close(*sock);
+			*sock = -1;
+			return -1;
+		}
+
+		return bytes;
+	}
+
+	return -1;
 }

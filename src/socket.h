@@ -54,14 +54,16 @@ class Sock
 {
 	public:
 		/*
-		 * Read data from a connection.
+		 * Read data from a connection into a buffer, and get the time
+		 * elapsed since the last read operation.
 		 */
-		ssize_t read(char* buffer, size_t buffer_length);
+		ssize_t read(char* buffer, size_t buffer_length, double& elapsed);
 
 		/*
-		 * Write data to a connection.
+		 * Write data to a connection from a buffer, and get the time elapsed
+		 * since the last write operation.
 		 */
-		ssize_t write(const char* buffer, size_t buffer_length);
+		ssize_t write(const char* buffer, size_t buffer_length, double& elapsed);
 
 		/*
 		 * Validate that the descriptor is still valid and that the connection
