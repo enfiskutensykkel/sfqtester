@@ -1,6 +1,7 @@
 #include <tr1/cstdint>
 #include <cstddef>
 #include <cstdio>
+#include <string>
 #include <time.h>
 #include "thread.h"
 #include "barrier.h"
@@ -56,6 +57,10 @@ void Client::run()
 		sock = Sock::create(hostname, rem_port);
 	}
 
+	std::string host = sock->host();
+	uint16_t port = sock->port();
+	fprintf(stdout, "Connected to %s:%u\n", host.c_str(), port);
+
 	// Synchronize all threads
 	barr.wait();
 
@@ -86,6 +91,6 @@ void Client::run()
 		}
 	}
 
-	// Clean up resources
+	// Free socket
 	delete sock;
 }

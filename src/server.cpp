@@ -37,10 +37,14 @@ void Server::stop()
 
 void Server::run()
 {
+	// Create a server socket
 	ListenSock* server = ListenSock::create(port);
+	fprintf(stderr, "Listening on port %u\n", server->port());
 
+	// Synchronize threads
 	barr.wait();
 
+	// Read loop
 	while (active) {
 		vector<shared_ptr<Sock> > active = server->get_socks();
 
@@ -52,5 +56,6 @@ void Server::run()
 		}
 	}
 
+	// Free socket
 	delete server;
 }
