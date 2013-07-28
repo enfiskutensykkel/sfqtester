@@ -29,7 +29,7 @@ void Server::run()
 		return;
 	}
 
-	established = true;
+	established = true; // TODO: Make stream only established after having accepted at least one connection
 	fprintf(stdout, "Listening on port %u\n", server->port());
 	fflush(stdout);
 
