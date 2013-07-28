@@ -30,10 +30,11 @@ int main(int argc, char** argv)
 	unsigned local_port = 0;
 	unsigned interval = 0;
 	unsigned length = 0;
+	unsigned duration = 0;
 
 	// Parse program arguments and options
 	int opt;
-	while ((opt = getopt(argc, argv, ":hc:p:q:n:i:")) != -1) {
+	while ((opt = getopt(argc, argv, ":hc:p:q:n:i:t:")) != -1) {
 		char* ptr;
 		switch (opt) {
 
@@ -97,7 +98,15 @@ int main(int argc, char** argv)
 				}
 				break;
 
-			// TODO: Add duration argument
+			// Set the duration of the program
+			case 't':
+				ptr = NULL;
+				duration = strtoul(optarg, &ptr, 0);
+				if (ptr == NULL || *ptr != '\0') {
+					fprintf(stderr, "Option -t requires a duration in seconds, or 0 for off\n");
+					return 't';
+				}
+				break;
 		}
 	}
 
@@ -164,6 +173,9 @@ int main(int argc, char** argv)
 
 	// Run until completion
 	while (run) {
+
+		// TODO: Count down duration
+
 		established = 0;
 		for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); run && it != conns.end(); ++it) {
 			established += (*it)->is_active();
