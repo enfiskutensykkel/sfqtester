@@ -116,16 +116,19 @@ vector<shared_ptr<Sock> > ListenSock::get_socks()
 	}
 
 
+	// Iterate over all connections and find the ones that has any events
 	vector<shared_ptr<Sock> >::iterator it = socks.begin();
 	while (num_active > 0 && it != socks.end()) {
 
 		shared_ptr<Sock> sock = *it;
-		
+
 		// Found active descriptor
-		if (FD_ISSET(*sock->sock, &active)) {
+		if (*sock->sock != -1 && FD_ISSET(*sock->sock, &active)) {
 			active_list.push_back(sock);
 			--num_active;
 		} 
+
+		++it;
 	}
 
 	return active_list;

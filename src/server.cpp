@@ -47,12 +47,20 @@ void Server::run()
 
 	// Read loop
 	while (active) {
-		vector<shared_ptr<Sock> > active = server->get_socks();
+		vector<shared_ptr<Sock> > socks = server->get_socks();
 
-		double time;
-		for (unsigned i = 0; i < active.size(); ++i) {
-			while (active[i]->read(buf, BUFFER_SIZE, time) == 0) {
+		for (unsigned i = 0; active && i < socks.size(); ++i) {
+			
+			// The socket was closed remotely
+			if (!socks[i]->alive()) {
+				continue;
+			}
 
+			// Read until everything is read
+			ssize_t read;
+			double time;
+			while (active && (read = socks[i]->read(buf, BUFFER_SIZE, time)) != 0) {
+				fprintf(stderr, "read %ld from %s:%u\n", read, socks[i]->host().c_str(), socks[i]->port());
 			}
 		}
 	}

@@ -103,7 +103,7 @@ static void close_sock(int* s)
 Sock::Sock(int descriptor) :
 	sock( new int(descriptor), &close_sock )
 {
-	// TODO: Set the descriptor to non-blocking
+	// FIXME: Set the descriptor to non-blocking
 }
 
 
@@ -239,8 +239,12 @@ ssize_t Sock::write(const char* buf, size_t len, double& time)
 uint16_t Sock::port()
 {
 	string name;
-	uint16_t port;
-	load_info(*sock, name, port);
+	uint16_t port = 0;
+
+	if (*sock != -1) {
+		load_info(*sock, name, port);
+	}
+
 	return port;
 }
 
@@ -252,6 +256,10 @@ string Sock::host()
 {
 	string name;
 	uint16_t port;
-	load_info(*sock, name, port);
+
+	if (*sock != -1) {
+		load_info(*sock, name, port);
+	}
+
 	return name;
 }
