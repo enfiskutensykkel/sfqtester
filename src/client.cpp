@@ -72,13 +72,26 @@ void Client::run()
 		ssize_t total, sent;
 		total = buflen > 0 ? buflen : BUFFER_SIZE;
 		sent = 0;
+		bool full = false;
 
 		// Send a chunk
 		while (active && sock->alive() && total > 0) {
+
 			sent = sock->write(buffer, total);
 			if (sent < 0) {
 				// Something went wrong
 				break;
+			}
+
+			// Check if send buffer is full
+			if (ival > 0 && !full && sent == 0) {
+				full = true;
+				fprintf(stdout, "%s:%u Send buffer full\n", host.c_str(), port);
+				fflush(stdout);
+			} else if (full && sent > 0) {
+				full = false;
+				fprintf(stdout, "%s:%u Send buffer cleared\n", host.c_str(), port);
+				fflush(stdout);
 			}
 
 			total -= sent;
