@@ -90,7 +90,7 @@ void Thread::stop()
 		// Wait for the thread to finish up, we assume that the derived class'
 		// stop() implementation has been called, and that run() behaves properly.
 		state = STOPPED;
-		pthread_join(id, NULL);
+		pthread_join(id, NULL); // FIXME: Have a timedjoin instead, and abort program if timeout > 30 secs
 	}
 	pthread_mutex_unlock(&mutex);
 }

@@ -136,7 +136,7 @@ int main(int argc, char** argv)
 	}
 	
 	// Synchronize with connections
-	barrier.wait();
+	barrier.wait(); // TODO: Have a timed_wait and abort if >60 seconds or something
 
 	unsigned established = 0;
 	for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it) {
