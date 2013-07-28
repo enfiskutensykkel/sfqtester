@@ -3,46 +3,25 @@
 #include <cstdio>
 #include <string>
 #include <time.h>
-#include "thread.h"
 #include "barrier.h"
 #include "socket.h"
-#include "streamer.h"
+#include "stream.h"
 
 
 Client::Client(Barrier& barrier, const char* host, uint16_t port) :
-	Thread(),
-	barr(barrier),
+	Stream(barrier),
 	hostname(host),
 	rem_port(port),
 	loc_port(0),
 	buflen(BUFFER_SIZE),
-	buf(NULL),
-	ival(0),
-	active(true)
+	ival(0)
 {
-	buf = new char[BUFFER_SIZE];
-	for (unsigned i = 0; i < BUFFER_SIZE; ++i) {
-		buf[i] = 'A';
-	}
-}
-
-
-Client::~Client()
-{
-	stop();
-	delete[] buf;
 }
 
 
 void Client::bind(uint16_t port)
 {
 	loc_port = port;
-}
-
-
-void Client::stop()
-{
-	active = false;
 }
 
 
@@ -57,9 +36,17 @@ void Client::run()
 		sock = Sock::create(hostname, rem_port);
 	}
 
+	// Couldn't create connection
+	if (sock == NULL) {
+		fprintf(stderr, "Couldn't connect to %s:%u\n", hostname, rem_port);
+		barr.wait();
+		return;
+	}
+
+	established = true;
 	std::string host = sock->host();
 	uint16_t port = sock->port();
-	fprintf(stdout, "Connected to %s:%u\n", host.c_str(), port);
+	fprintf(stdout, "%s:%u Connected\n", host.c_str(), port);
 	fflush(stdout);
 
 	// Synchronize all threads
@@ -82,7 +69,7 @@ void Client::run()
 		// Send a chunk
 		while (total > 0) {
 			double time;
-			sent = sock->write(buf, total, time);
+			sent = sock->write(buffer, total, time);
 			if (sent < 0) {
 				// Something went wrong
 				break;
@@ -93,5 +80,8 @@ void Client::run()
 	}
 
 	// Free socket
+	established = false;
+	fprintf(stdout, "%s:%u Closing connection\n", host.c_str(), port);
+	fflush(stdout);
 	delete sock;
 }

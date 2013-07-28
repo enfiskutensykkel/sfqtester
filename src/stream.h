@@ -9,44 +9,51 @@
 class Barrier;
 
 
-class Client : public Thread
+class Stream : public Thread
+{
+	public:
+		Stream(Barrier& barrier);
+		~Stream(void);
+
+		void stop(void);
+		virtual void run(void) = 0;
+
+	protected:
+		Barrier& barr;
+		char* buffer;
+		bool active;
+		bool established;
+};
+
+
+class Client : public Stream
 {
 	public:
 		Client(Barrier& barrier, const char* hostname, uint16_t port);
-		~Client(void);
 
 		void bind(uint16_t local_port);
 		void set_chunk_size(size_t bytes);
 		void set_interval(unsigned ms);
 
-		void stop(void);
 		void run(void);
 
 	private:
-		Barrier& barr;
 		const char* hostname;
 		uint16_t rem_port, loc_port;
 		size_t buflen;
-		char* buf;
 		unsigned ival;
-		bool active;
 };
 
 
-class Server : public Thread
+class Server : public Stream
 {
 	public:
 		Server(Barrier& barrier, uint16_t port);
-		~Server(void);
 
-		void stop(void);
 		void run(void);
 
 	private:
-		Barrier& barr;
 		uint16_t port;
-		char* buf;
-		bool active;
 };
 
 #endif
