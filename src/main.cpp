@@ -5,7 +5,7 @@
 #include <signal.h>
 #include <getopt.h>
 #include "barrier.h"
-#include "streamer.h"
+#include "stream.h"
 #include "socket.h"
 #include <unistd.h>
 
@@ -115,12 +115,26 @@ int main(int argc, char** argv)
 	// Create a barrier
 	Barrier barrier(num_conns + 1);
 
-	// Test streamer
-	Server server(barrier, local_port);
+	// Start connections
+	vector<shared_ptr<Stream> > conns;
+	
+	for (unsigned i = 0; i < num_conns; ++i) {
+		if (optind < argc) {
+			Client* client = new Client(barrier, argv[optind], remote_port);
+			if (local_port > 0) {
+				client->bind(local_port + i);
+			}
 
-	server.start();
+			conns.push_back(shared_ptr<Stream>( static_cast<Stream*>(client) ));
+		} else {
+			conns.push_back(shared_ptr<Stream>( new Server(barrier, local_port + i) ));
+		}
+	}
+	
+	// Synchronize with connections
 	barrier.wait();
 
+	// Run until completion
 	while (run);
 
 	return 0;
