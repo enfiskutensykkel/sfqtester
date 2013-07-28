@@ -1,6 +1,7 @@
 #include <tr1/cstdint>
 #include <cstddef>
 #include <cstdio>
+#include <time.h>
 #include "thread.h"
 #include "barrier.h"
 #include "socket.h"
@@ -10,7 +11,6 @@
 Client::Client(Barrier& barrier, const char* host, uint16_t port) :
 	Thread(),
 	barr(barrier),
-	sock(-1),
 	hostname(host),
 	rem_port(port),
 	loc_port(0),
@@ -20,19 +20,22 @@ Client::Client(Barrier& barrier, const char* host, uint16_t port) :
 	active(true)
 {
 	buf = new char[BUFFER_SIZE];
+	for (unsigned i = 0; i < BUFFER_SIZE; ++i) {
+		buf[i] = 'A';
+	}
 }
 
 
 Client::~Client()
 {
 	stop();
-	puts("stop");
 	delete[] buf;
 }
 
 
 void Client::bind(uint16_t port)
 {
+	loc_port = port;
 }
 
 
@@ -42,7 +45,6 @@ void Client::stop()
 }
 
 
-#include <unistd.h>
 void Client::run()
 {
 	// Create connection to remote host
@@ -57,10 +59,33 @@ void Client::run()
 	// Synchronize all threads
 	barr.wait();
 
+	// Send loop
+	timespec timeout = {0, 1000000L};
 	while (active && sock->alive()) {
-		sleep(2);
-		break;
+
+		// Sleep for an interval
+		uint64_t i = ival;
+		while (active && i--) {
+			nanosleep(&timeout, NULL);
+		}
+
+		ssize_t total, sent;
+		total = buflen > 0 ? buflen : BUFFER_SIZE;
+		sent = 0;
+
+		// Send a chunk
+		while (total > 0) {
+			double time;
+			sent = sock->write(buf, total, time);
+			if (sent < 0) {
+				// Something went wrong
+				break;
+			}
+
+			total -= sent;
+		}
 	}
 
+	// Clean up resources
 	delete sock;
 }

@@ -25,8 +25,7 @@ class Client : public Thread
 	private:
 		Barrier& barr;
 		const char* hostname;
-		uint16_t rem_port;
-		uint16_t loc_port;
+		uint16_t rem_port, loc_port;
 		size_t buflen;
 		char* buf;
 		unsigned ival;
