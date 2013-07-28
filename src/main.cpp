@@ -25,9 +25,9 @@ static void terminate(void)
 
 int main(int argc, char** argv)
 {
-	unsigned num_conn = 1;
-	unsigned rem_port = 0;
-	unsigned loc_port = 0;
+	unsigned num_conns = 1;
+	unsigned remote_port = 0;
+	unsigned local_port = 0;
 	unsigned interval = 0;
 	unsigned length = 0;
 
@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 			// Set number of connections
 			case 'c':
 				ptr = NULL;
-				if ((num_conn = strtoul(optarg, &ptr, 0)) > 1024 || num_conn < 1 || ptr == NULL || *ptr != '\0') {
+				if ((num_conns = strtoul(optarg, &ptr, 0)) > 1024 || num_conns < 1 || ptr == NULL || *ptr != '\0') {
 					fprintf(stderr, "Option -c requires a valid number of connections [1-1024]\n");
 					return 'c';
 				}
@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 			// Set the remote starting port
 			case 'p':
 				ptr = NULL;
-				if ((rem_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
+				if ((remote_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
 					fprintf(stderr, "Option -p requires a valid port number [0-65535]\n");
 					return 'p';
 				}
@@ -73,7 +73,7 @@ int main(int argc, char** argv)
 			// Set the local starting port
 			case 'q':
 				ptr = NULL;
-				if ((loc_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
+				if ((local_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
 					fprintf(stderr, "Option -q requires a valid port number [0-65535]\n");
 					return 'p';
 				}
@@ -100,10 +100,10 @@ int main(int argc, char** argv)
 	}
 
 	// Check if all mandatory options were set
-	if (optind < argc && rem_port == 0) {
+	if (optind < argc && remote_port == 0) {
 		fprintf(stderr, "Option -p is required for client\n");
 		return 'p';
-	} else if (optind == argc && loc_port == 0) {
+	} else if (optind == argc && local_port == 0) {
 		fprintf(stderr, "Option -q is required for server\n");
 		return 'q';
 	}
@@ -113,12 +113,12 @@ int main(int argc, char** argv)
 	signal(SIGINT, (void (*)(int)) &terminate);
 
 	// Create a barrier
-	Barrier barrier(num_conn + 1);
+	Barrier barrier(num_conns + 1);
 
 	// Test streamer
-	Client client(barrier, "localhost", 5000);
+	Server server(barrier, local_port);
 
-	client.start();
+	server.start();
 	barrier.wait();
 
 	while (run);
