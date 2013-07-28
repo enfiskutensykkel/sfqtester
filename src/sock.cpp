@@ -199,9 +199,9 @@ ssize_t Sock::read(char* buf, size_t len, double& time)
 			// Remote end closed the connection
 			close(*sock);
 			*sock = -1;
-			return -1;
+			return -2;
 		} else if (bytes == -1) {
-			// TODO: Error handling
+			// TODO: Create a list of return values for various errnos
 			return -1;
 		}
 
@@ -225,6 +225,13 @@ ssize_t Sock::write(const char* buf, size_t len, double& time)
 		} else if (bytes == -1) {
 			close(*sock);
 			*sock = -1;
+
+			// TODO: Add a list of return values for various errnos
+			switch (errno) {
+				case ECONNRESET:
+					return -2;
+			}
+
 			return -1;
 		}
 

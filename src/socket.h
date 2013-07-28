@@ -55,6 +55,8 @@ class ListenSock
  * Socket descriptor wrapper
  *
  * Manages a connection to a remote host.
+ *
+ * TODO: Have the Sock class throw exceptions on errors.
  */
 class Sock
 {
