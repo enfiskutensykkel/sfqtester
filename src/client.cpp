@@ -74,9 +74,8 @@ void Client::run()
 		sent = 0;
 
 		// Send a chunk
-		while (total > 0) {
-			double time;
-			sent = sock->write(buffer, total, time);
+		while (active && sock->alive() && total > 0) {
+			sent = sock->write(buffer, total);
 			if (sent < 0) {
 				// Something went wrong
 				break;

@@ -72,16 +72,14 @@ class Sock
 		uint16_t port(void);
 
 		/*
-		 * Read data from a connection into a buffer, and get the time
-		 * elapsed since the last read operation.
+		 * Read data from a connection into a buffer.
 		 */
-		ssize_t read(char* buffer, size_t buffer_length, double& elapsed);
+		ssize_t read(char* buffer, size_t buffer_length);
 
 		/*
-		 * Write data to a connection from a buffer, and get the time elapsed
-		 * since the last write operation.
+		 * Write data to a connection from a buffer.
 		 */
-		ssize_t write(const char* buffer, size_t buffer_length, double& elapsed);
+		ssize_t write(const char* buffer, size_t buffer_length);
 
 		/*
 		 * Validate that the descriptor is still valid and that the connection

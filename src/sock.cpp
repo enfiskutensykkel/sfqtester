@@ -188,7 +188,7 @@ Sock* Sock::create(const char* hostname, uint16_t port)
 /*
  * Read data from the connection.
  */
-ssize_t Sock::read(char* buf, size_t len, double& time)
+ssize_t Sock::read(char* buf, size_t len)
 {
 	if (*sock != -1) {
 		ssize_t bytes = recv(*sock, buf, len, MSG_DONTWAIT);
@@ -215,7 +215,7 @@ ssize_t Sock::read(char* buf, size_t len, double& time)
 /*
  * Write data to a connection
  */
-ssize_t Sock::write(const char* buf, size_t len, double& time)
+ssize_t Sock::write(const char* buf, size_t len)
 {
 	if (*sock != -1) {
 		ssize_t bytes = send(*sock, buf, len, MSG_DONTWAIT);
