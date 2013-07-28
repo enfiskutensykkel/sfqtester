@@ -5,6 +5,7 @@
 #include <tr1/cstdint>
 #include <tr1/memory>
 #include <vector>
+#include <string>
 #include <netdb.h>
 #include <sys/select.h>
 
@@ -53,6 +54,16 @@ class ListenSock
 class Sock
 {
 	public:
+		/*
+		 * Get the numerical hostname of the remote host.
+		 */
+		std::string remote_host(void);
+
+		/*
+		 * Get the port number of the remote end of the connection.
+		 */
+		uint16_t remote_port(void);
+
 		/*
 		 * Read data from a connection into a buffer, and get the time
 		 * elapsed since the last read operation.

@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <string>
 #include <sstream>
 #include <tr1/cstdint>
 #include <cstddef>
@@ -12,6 +13,37 @@
 #include <errno.h>
 #include <fcntl.h>
 #include "socket.h"
+
+using std::string;
+
+
+/*
+ * Find out the hostname and port number of the remote end of a connection.
+ */
+static inline
+bool load_info(int sock, string& name, uint16_t& port)
+{
+	sockaddr_in addr;
+
+	// Load info about other end (the peer)
+	socklen_t len = sizeof(addr);
+	if (getpeername(sock, reinterpret_cast<sockaddr*>(&addr), &len) == -1) {
+		return false;
+	}
+
+	// Get hold of the hostname
+	char nname[INET_ADDRSTRLEN];
+	if (getnameinfo(reinterpret_cast<sockaddr*>(&addr), (socklen_t) sizeof(addr), nname, sizeof(nname), NULL, 0, NI_NUMERICHOST) != 0) {
+		return false;
+	}
+
+	name = string(nname);
+
+	// Get the port number
+	port = ntohs(addr.sin_port);
+
+	return true;
+}
 
 
 /*
@@ -199,4 +231,28 @@ ssize_t Sock::write(const char* buf, size_t len, double& time)
 	}
 
 	return -1;
+}
+
+
+/*
+ * Get remote port.
+ */
+uint16_t Sock::remote_port()
+{
+	string name;
+	uint16_t port;
+	load_info(*sock, name, port);
+	return port;
+}
+
+
+/*
+ * Get remote hostname
+ */
+string Sock::remote_host()
+{
+	string name;
+	uint16_t port;
+	load_info(*sock, name, port);
+	return name;
 }
