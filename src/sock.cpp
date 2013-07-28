@@ -237,7 +237,7 @@ ssize_t Sock::write(const char* buf, size_t len, double& time)
 /*
  * Get remote port.
  */
-uint16_t Sock::remote_port()
+uint16_t Sock::port()
 {
 	string name;
 	uint16_t port;
@@ -249,7 +249,7 @@ uint16_t Sock::remote_port()
 /*
  * Get remote hostname
  */
-string Sock::remote_host()
+string Sock::host()
 {
 	string name;
 	uint16_t port;

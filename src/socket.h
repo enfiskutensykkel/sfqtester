@@ -33,6 +33,11 @@ class ListenSock
 		 */
 		static ListenSock* create(uint16_t port);
 
+		/*
+		 * Get the port number of the local port.
+		 */
+		uint16_t port(void);
+
 	private:
 		std::vector<std::tr1::shared_ptr<Sock> > socks;
 		int listen_sock;
@@ -57,12 +62,12 @@ class Sock
 		/*
 		 * Get the numerical hostname of the remote host.
 		 */
-		std::string remote_host(void);
+		std::string host(void);
 
 		/*
 		 * Get the port number of the remote end of the connection.
 		 */
-		uint16_t remote_port(void);
+		uint16_t port(void);
 
 		/*
 		 * Read data from a connection into a buffer, and get the time

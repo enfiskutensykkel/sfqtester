@@ -131,3 +131,24 @@ vector<shared_ptr<Sock> > ListenSock::get_socks()
 
 	return active_list;
 }
+
+
+/*
+ * Get the port we're listening on.
+ */
+uint16_t ListenSock::port()
+{
+	if (listen_sock) {
+		sockaddr_in addr;
+		socklen_t len = sizeof(addr);
+
+		// Load info about the socket descriptor
+		if (getsockname(listen_sock, reinterpret_cast<sockaddr*>(&addr), &len) == -1) {
+			return 0;
+		}
+
+		return ntohs(addr.sin_port);
+	}
+
+	return 0;
+}
