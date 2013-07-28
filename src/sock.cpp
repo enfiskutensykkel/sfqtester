@@ -90,7 +90,6 @@ bool bind_port(int sock, uint16_t port)
 static void close_sock(int* s)
 {
 	if (*s != -1) {
-		fprintf(stderr, "Closing socket %d\n", *s);
 		::close(*s);
 	}
 

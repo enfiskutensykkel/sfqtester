@@ -105,7 +105,6 @@ vector<shared_ptr<Sock> > ListenSock::get_socks()
 		int sock = accept(listen_sock, NULL, NULL);
 
 		if (sock != -1) {
-			fprintf(stderr, "got new sock %d\n", sock);
 			// Add the new descriptor to the descriptor set
 			FD_SET(sock, &all_fds);
 			hi_sock = sock > hi_sock ? sock : hi_sock;
