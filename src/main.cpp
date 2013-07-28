@@ -4,10 +4,10 @@
 #include <cstdio>
 #include <signal.h>
 #include <getopt.h>
+#include <time.h>
 #include "barrier.h"
 #include "stream.h"
 #include "socket.h"
-#include <unistd.h>
 
 using std::vector;
 using std::tr1::shared_ptr;
@@ -172,24 +172,47 @@ int main(int argc, char** argv)
 	} 
 
 	// Run until completion
+	unsigned long time_left = duration * 1000;
+	timespec timeout = {0, 1000000L}; 
+
+	if (optind < argc && duration > 0) {
+		fprintf(stderr, "Running for %u seconds...\n", duration);
+	} else if (optind < argc) {
+		fprintf(stderr, "Running...\n");
+	}
+
 	while (run) {
 
-		// TODO: Count down duration
+		// Sleep for a millisecond if a duration is set
+		if (optind < argc && duration > 0) {
+			nanosleep(&timeout, NULL);
 
-		established = 0;
-		for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); run && it != conns.end(); ++it) {
-			established += (*it)->is_active();
+			// Check if the time is up
+			if (--time_left == 0) {
+				break;
+			}
 		}
+		
+		if (optind < argc) {
+			// Count number of active connections
+			established = 0;
+			for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); run && it != conns.end(); ++it) {
+				established += (*it)->is_active();
+			}
 
-		if (established == 0) {
-			break;
+			// No active connections left, stop the program
+			if (established == 0) {
+				break;
+			}
 		}
 	}
 
 	if (!run) {
-		fprintf(stderr, "All connections terminating\n");
+		fprintf(stderr, "Aborted. Closing connections...\n");
 	} else if (established == 0) {
-		fprintf(stderr, "All connections terminated.\n");
+		fprintf(stderr, "All connections closed by peer.\n");
+	} else if (optind < argc && time_left == 0) {
+		fprintf(stderr, "Completed. Closing connections...\n");
 	}
 
 	return 0;

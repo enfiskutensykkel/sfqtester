@@ -32,14 +32,6 @@ Barrier::~Barrier()
 void Barrier::wait()
 {
 	pthread_mutex_lock(&lock);
-	if (num_threads == 1) {
-		// Only one thread, artificially wait for 750 ms
-		// FIXME: This is just an ugly hack to prevent the race condition for servers
-		timespec timeout = {0, 750000000L};
-		pthread_yield();
-		nanosleep(&timeout, NULL);
-	}
-
 	if (--num_waiting > 0) {
 		// Wait until all threads reach this point
 		pthread_cond_wait(&waiting_queue, &lock);
