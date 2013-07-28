@@ -1,14 +1,14 @@
 #include <tr1/cstdint>
 #include <tr1/memory>
 #include <vector>
+#include <set>
 #include <cstddef>
 #include <cstdio>
+#include <string>
 #include "barrier.h"
 #include "socket.h"
 #include "stream.h"
 
-using std::vector;
-using std::tr1::shared_ptr;
 
 
 Server::Server(Barrier& barr, uint16_t port) :
@@ -20,6 +20,10 @@ Server::Server(Barrier& barr, uint16_t port) :
 
 void Server::run()
 {
+	using std::set;
+	using std::vector;
+	using std::tr1::shared_ptr;
+
 	// Create a server socket
 	ListenSock* server = ListenSock::create(port);
 
@@ -30,11 +34,14 @@ void Server::run()
 	}
 
 	established = true; // TODO: Make stream only established after having accepted at least one connection
-	fprintf(stdout, "Listening on port %u\n", server->port());
+	fprintf(stdout, "%u: Service started\n", server->port());
 	fflush(stdout);
 
 	// Synchronize threads
 	barr.wait();
+
+	// Create a map over active connections
+	set<std::string> conn_set;
 
 	// Read loop
 	while (active) {
@@ -50,6 +57,15 @@ void Server::run()
 				continue;
 			}
 
+			// Check if we have a new connection
+			std::string hostname(socks[i]->host());
+			set<std::string>::iterator it = conn_set.find(hostname);
+			if (it == conn_set.end()) {
+				conn_set.insert(hostname);
+				fprintf(stdout, "%u: Connected to %s:%u\n", port, hostname.c_str(), socks[i]->port());
+				fflush(stdout);
+			}
+
 			// Read until everything is read
 			ssize_t read;
 			double time;
@@ -60,6 +76,6 @@ void Server::run()
 
 	// Free socket
 	established = false;
-	fprintf(stdout, "Stopping listening on port %u\n", port);
+	fprintf(stdout, "%u: Stopping service\n", port);
 	delete server;
 }
