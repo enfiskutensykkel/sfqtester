@@ -120,9 +120,15 @@ int main(int argc, char** argv)
 	vector<shared_ptr<Stream> > conns;
 	
 	// Start connections
-	fprintf(stderr, "Starting %u connections...\n", num_conns);
+	if (optind < argc) {
+		fprintf(stderr, "Starting %u connections...\n", num_conns);
+	} else {
+		fprintf(stderr, "Starting %u services...\n", num_conns);
+	}
+
 	for (unsigned i = 0; i < num_conns; ++i) {
 		if (optind < argc) {
+
 			Client* client;  
 			if (local_port > 0) {
 				client = new Client(barrier, argv[optind], remote_port + i, local_port + i);
@@ -130,9 +136,12 @@ int main(int argc, char** argv)
 				client = new Client(barrier, argv[optind], remote_port + i);
 			}
 
-			//client->set_wait(estimated_rtt * i);
+			client->set_interval(interval);
+			client->set_chunk_size(length);
+
 			client->start();
 			conns.push_back(shared_ptr<Stream>( static_cast<Stream*>(client) ));
+
 		} else {
 			Server* server = new Server(local_port + i);
 			server->start();
@@ -143,25 +152,33 @@ int main(int argc, char** argv)
 	// Synchronize with connections
 	barrier.wait();  
 
+	// Count number of active connections
 	unsigned established = 0;
 	for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it) {
 		established += (*it)->is_active();
 	}
 
 	if (optind < argc) {
-		fprintf(stderr, "%u out of %u connections successfully established.\n", established, num_conns);
-	} else {
-		fprintf(stderr, "Successfully listening for connections on %u out of %u ports\n", established, num_conns);
-	}
+		fprintf(stderr, "%u out of %u connections established.\n", established, num_conns);
+	} 
 
 	// Run until completion
-	while (established > 0 && run) {
+	while (run) {
 		established = 0;
-		for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it) {
+		for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); run && it != conns.end(); ++it) {
 			established += (*it)->is_active();
+		}
+
+		if (established == 0) {
+			break;
 		}
 	}
 
-	fprintf(stderr, "All connections terminating\n");
+	if (!run) {
+		fprintf(stderr, "All connections terminating\n");
+	} else if (established == 0) {
+		fprintf(stderr, "All connections terminated.\n");
+	}
+
 	return 0;
 }

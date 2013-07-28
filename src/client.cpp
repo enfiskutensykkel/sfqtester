@@ -91,3 +91,17 @@ void Client::run()
 	fflush(stdout);
 	delete sock;
 }
+
+
+void Client::set_chunk_size(size_t len)
+{
+	if (len <= BUFFER_SIZE) {
+		buflen = len;
+	}
+}
+
+
+void Client::set_interval(unsigned i)
+{
+	ival = i;
+}
