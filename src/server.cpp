@@ -63,8 +63,7 @@ void Server::run()
 
 			// Read until everything is read
 			ssize_t read;
-			while (active && (read = socks[i]->read(buffer, BUFFER_SIZE)) != 0) {
-			}
+			while (active && (read = socks[i]->read(buffer, BUFFER_SIZE)) != 0);
 		}
 	}
 
