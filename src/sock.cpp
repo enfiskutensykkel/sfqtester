@@ -56,7 +56,7 @@ bool Sock::load_addrinfo(addrinfo*& info, const char* host, uint16_t port)
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = host != NULL ? AI_PASSIVE : 0;
+	hints.ai_flags = host == NULL ? AI_PASSIVE : 0;
 
 	std::ostringstream converter;
 	converter << port; // convert uint16_t to string
@@ -171,7 +171,7 @@ Sock* Sock::create(const char* host, uint16_t remote_port, uint16_t local_port)
 	if (ptr == NULL) {
 		return NULL;
 	}
-
+	
 	return new Sock(sock);
 }
 
