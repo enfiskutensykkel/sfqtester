@@ -96,6 +96,8 @@ int main(int argc, char** argv)
 					return 'i';
 				}
 				break;
+
+			// TODO: Add duration argument
 		}
 	}
 
@@ -121,11 +123,14 @@ int main(int argc, char** argv)
 	fprintf(stderr, "Starting %u connections...\n", num_conns);
 	for (unsigned i = 0; i < num_conns; ++i) {
 		if (optind < argc) {
-			Client* client = new Client(barrier, argv[optind], remote_port);
+			Client* client;  
 			if (local_port > 0) {
-				client->bind(local_port + i);
+				client = new Client(barrier, argv[optind], remote_port + i, local_port + i);
+			} else {
+				client = new Client(barrier, argv[optind], remote_port + i);
 			}
 
+			//client->set_wait(estimated_rtt * i);
 			client->start();
 			conns.push_back(shared_ptr<Stream>( static_cast<Stream*>(client) ));
 		} else {
@@ -151,15 +156,9 @@ int main(int argc, char** argv)
 
 	// Run until completion
 	while (established > 0 && run) {
-
-		unsigned previous = established;
 		established = 0;
 		for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it) {
 			established += (*it)->is_active();
-		}
-
-		if (established != previous) {
-			fprintf(stderr, "%u connections still alive\n", established);
 		}
 	}
 
