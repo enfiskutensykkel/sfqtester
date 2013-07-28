@@ -13,8 +13,9 @@ class Stream : public Thread
 {
 	public:
 		Stream(Barrier& barrier);
-		~Stream(void);
+		virtual ~Stream(void);
 
+		virtual bool is_active(void);
 		void stop(void);
 		virtual void run(void) = 0;
 

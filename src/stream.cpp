@@ -28,3 +28,9 @@ void Stream::stop()
 {
 	active = false;
 }
+
+
+bool Stream::is_active()
+{
+	return active && established; // TODO: Override this in client and server
+}

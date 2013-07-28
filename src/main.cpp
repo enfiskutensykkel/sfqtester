@@ -138,10 +138,31 @@ int main(int argc, char** argv)
 	// Synchronize with connections
 	barrier.wait();
 
-	// TODO: Count number of established connections
+	unsigned established = 0;
+	for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it) {
+		established += (*it)->is_active();
+	}
+
+	if (optind < argc) {
+		fprintf(stderr, "%u out of %u connections successfully established.\n", established, num_conns);
+	} else {
+		fprintf(stderr, "Successfully listening for connections on %u out of %u ports\n", established, num_conns);
+	}
 
 	// Run until completion
-	while (run);
+	while (established > 0 && run) {
 
+		unsigned previous = established;
+		established = 0;
+		for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it) {
+			established += (*it)->is_active();
+		}
+
+		if (established != previous) {
+			fprintf(stderr, "%u connections still alive\n", established);
+		}
+	}
+
+	fprintf(stderr, "All connections terminated\n");
 	return 0;
 }
