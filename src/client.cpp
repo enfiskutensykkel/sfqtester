@@ -60,6 +60,7 @@ void Client::run()
 	std::string host = sock->host();
 	uint16_t port = sock->port();
 	fprintf(stdout, "Connected to %s:%u\n", host.c_str(), port);
+	fflush(stdout);
 
 	// Synchronize all threads
 	barr.wait();

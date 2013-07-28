@@ -39,7 +39,8 @@ void Server::run()
 {
 	// Create a server socket
 	ListenSock* server = ListenSock::create(port);
-	fprintf(stderr, "Listening on port %u\n", server->port());
+	fprintf(stdout, "Listening on port %u\n", server->port());
+	fflush(stdout);
 
 	// Synchronize threads
 	barr.wait();
