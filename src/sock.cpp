@@ -220,7 +220,9 @@ ssize_t Sock::write(const char* buf, size_t len, double& time)
 	if (*sock != -1) {
 		ssize_t bytes = send(*sock, buf, len, MSG_DONTWAIT);
 
-		if (bytes == -1) {
+		if (bytes <= 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+			return 0;
+		} else if (bytes == -1) {
 			close(*sock);
 			*sock = -1;
 			return -1;
