@@ -12,7 +12,7 @@ class Barrier;
 class Stream : public Thread
 {
 	public:
-		Stream(Barrier& barrier);
+		Stream(void);
 		virtual ~Stream(void);
 
 		virtual bool is_active(void);
@@ -20,7 +20,6 @@ class Stream : public Thread
 		virtual void run(void) = 0;
 
 	protected:
-		Barrier& barr;
 		char* buffer;
 		bool active;
 		bool established;
@@ -39,6 +38,7 @@ class Client : public Stream
 		void run(void);
 
 	private:
+		Barrier& barr;
 		const char* hostname;
 		uint16_t rem_port, loc_port;
 		size_t buflen;
@@ -49,7 +49,7 @@ class Client : public Stream
 class Server : public Stream
 {
 	public:
-		Server(Barrier& barrier, uint16_t port);
+		Server(uint16_t port);
 
 		void run(void);
 

@@ -3,9 +3,8 @@
 #include "stream.h"
 
 
-Stream::Stream(Barrier& barrier) :
+Stream::Stream() :
 	Thread(),
-	barr(barrier),
 	buffer(NULL),
 	active(true),
 	established(false)

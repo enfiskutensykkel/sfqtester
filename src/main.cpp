@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 	signal(SIGINT, (void (*)(int)) &terminate);
 
 	// Create a barrier
-	Barrier barrier(num_conns + 1);
+	Barrier barrier(num_conns * (optind < argc) + 1);
 
 	vector<shared_ptr<Stream> > conns;
 	
@@ -134,14 +134,14 @@ int main(int argc, char** argv)
 			client->start();
 			conns.push_back(shared_ptr<Stream>( static_cast<Stream*>(client) ));
 		} else {
-			Server* server = new Server(barrier, local_port + i);
+			Server* server = new Server(local_port + i);
 			server->start();
 			conns.push_back(shared_ptr<Stream>( static_cast<Stream*>(server) ));
 		}
 	}
 	
 	// Synchronize with connections
-	barrier.wait(); // TODO: Have a timed_wait and abort if >60 seconds or something
+	barrier.wait();  
 
 	unsigned established = 0;
 	for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it) {
@@ -162,6 +162,6 @@ int main(int argc, char** argv)
 		}
 	}
 
-	fprintf(stderr, "All connections terminated\n");
+	fprintf(stderr, "All connections terminating\n");
 	return 0;
 }

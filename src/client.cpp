@@ -9,7 +9,8 @@
 
 
 Client::Client(Barrier& barrier, const char* host, uint16_t port) :
-	Stream(barrier),
+	Stream(),
+	barr(barrier),
 	hostname(host),
 	rem_port(port),
 	loc_port(0),
@@ -20,7 +21,8 @@ Client::Client(Barrier& barrier, const char* host, uint16_t port) :
 
 
 Client::Client(Barrier& barrier, const char* host, uint16_t r_port, uint16_t l_port) :
-	Stream(barrier),
+	Stream(),
+	barr(barrier),
 	hostname(host),
 	rem_port(r_port),
 	loc_port(l_port),

@@ -11,8 +11,7 @@
 
 
 
-Server::Server(Barrier& barr, uint16_t port) :
-	Stream(barr),
+Server::Server(uint16_t port) :
 	port(port)
 {
 }
@@ -29,16 +28,12 @@ void Server::run()
 
 	if (server == NULL) {
 		fprintf(stderr, "Couldn't listen on port %u\n", port);
-		barr.wait();
 		return;
 	}
 
 	established = true; // TODO: Make stream only established after having accepted at least one connection
 	fprintf(stdout, "%u: Service started\n", server->port());
 	fflush(stdout);
-
-	// Synchronize threads
-	barr.wait();
 
 	// Create a map over active connections
 	set<std::string> conn_set;
