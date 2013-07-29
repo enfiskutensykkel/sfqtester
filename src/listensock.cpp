@@ -86,18 +86,33 @@ ListenSock* ListenSock::create(uint16_t port)
 }
 
 
+/*
+ * Return a vector with active socket descriptors
+ */
 vector<shared_ptr<Sock> > ListenSock::get_socks()
 {
 	vector<shared_ptr<Sock> > active_list;
 	fd_set active = all_fds;
 
 
+	vector<shared_ptr<Sock> >::iterator it; 
+
 	// Select the number of descriptors with any events
 	timeval wait = {0, 0};
-	int num_active = select(hi_sock + 1, &active, NULL, NULL, &wait);
-	if (num_active == -1) {
-		// TODO: Error handling for select returning -1
-		return active_list;
+	int num_active;
+	while ((num_active = select(hi_sock + 1, &active, NULL, NULL, &wait)) == -1) {
+		if (socks.size() == 0) {
+			break;
+		}
+
+		// One of the sockets are closed, remove it from the set
+		for (it = socks.begin(); it != socks.end(); ++it) {
+			if (*(*it)->sock == -1) {
+				FD_CLR((*it)->fd, &all_fds);
+				socks.erase(it);
+				break;
+			}
+		}
 	}
 
 	// Accept any incomming connections
@@ -115,10 +130,8 @@ vector<shared_ptr<Sock> > ListenSock::get_socks()
 		--num_active;
 	}
 
-
 	// Iterate over all connections and find the ones that has any events
-	vector<shared_ptr<Sock> >::iterator it = socks.begin();
-	while (num_active > 0 && it != socks.end()) {
+	for (it = socks.begin(); num_active > 0 && it != socks.end(); ++it) {
 
 		shared_ptr<Sock> sock = *it;
 
@@ -127,8 +140,6 @@ vector<shared_ptr<Sock> > ListenSock::get_socks()
 			active_list.push_back(sock);
 			--num_active;
 		} 
-
-		++it;
 	}
 
 	return active_list;

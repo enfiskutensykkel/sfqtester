@@ -4,7 +4,6 @@
 #include <set>
 #include <cstddef>
 #include <cstdio>
-#include <string>
 #include "barrier.h"
 #include "socket.h"
 #include "stream.h"
@@ -36,7 +35,7 @@ void Server::run()
 	fflush(stdout);
 
 	// Create a map over active connections
-	set<std::string> conn_set;
+	set<int> conn_set;
 
 	// Read loop
 	while (active) {
@@ -53,17 +52,15 @@ void Server::run()
 			}
 
 			// Check if we have a new connection
-			std::string hostname(socks[i]->host());
-			set<std::string>::iterator it = conn_set.find(hostname);
+			set<int>::iterator it = conn_set.find(socks[i]->get_raw());
 			if (it == conn_set.end()) {
-				conn_set.insert(hostname);
-				fprintf(stdout, "%u: Connected to %s:%u\n", port, hostname.c_str(), socks[i]->port());
+				conn_set.insert(socks[i]->get_raw());
+				fprintf(stdout, "%u: Connected to %s:%u\n", port, socks[i]->host().c_str(), socks[i]->port());
 				fflush(stdout);
 			}
 
 			// Read until everything is read
-			ssize_t read;
-			while (active && (read = socks[i]->read(buffer, BUFFER_SIZE)) != 0);
+			while (active && socks[i]->read(buffer, BUFFER_SIZE) > 0);
 		}
 	}
 

@@ -61,6 +61,12 @@ class ListenSock
 class Sock
 {
 	public:
+
+		/*
+		 * Get the raw socket descriptor.
+		 */
+		int get_raw(void);
+
 		/*
 		 * Get the numerical hostname of the remote host.
 		 */
@@ -110,6 +116,7 @@ class Sock
 		friend class ListenSock;
 
 		std::tr1::shared_ptr<int> sock;
+		int fd;
 
 		/* Create new instance */
 		Sock(int socket_descriptor);

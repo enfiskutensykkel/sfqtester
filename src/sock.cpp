@@ -101,9 +101,12 @@ static void close_sock(int* s)
  * Give control of a socket descriptor to an instance of socket.
  */
 Sock::Sock(int descriptor) :
-	sock( new int(descriptor), &close_sock )
+	sock( new int(descriptor), &close_sock ),
+	fd(descriptor)
 {
-	// FIXME: Set the descriptor to non-blocking
+	// Set socket to non-blocking
+	int status = fcntl(*sock, F_GETFL, 0);
+	fcntl(*sock, F_SETFL, status | O_NONBLOCK);
 }
 
 
@@ -113,6 +116,7 @@ Sock::Sock(int descriptor) :
 bool Sock::alive()
 {
 	if (*sock == -1 || (fcntl(*sock, F_GETFL) == -1 && errno == EBADF)) {
+		fprintf(stderr, "not alive\n");
 		*sock = -1;
 		return false;
 	}
@@ -193,16 +197,18 @@ ssize_t Sock::read(char* buf, size_t len)
 	if (*sock != -1) {
 		ssize_t bytes = recv(*sock, buf, len, MSG_DONTWAIT);
 
-		if (bytes <= 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+		if (bytes == -1 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
 			return 0;
 		} else if (bytes == 0) {
 			// Remote end closed the connection
 			close(*sock);
 			*sock = -1;
-			return -2;
+			return -1;
 		} else if (bytes == -1) {
 			// TODO: Create a list of return values for various errnos
-			return -1;
+			close(*sock);
+			*sock = -1;
+			return -2;
 		}
 
 		return bytes;
@@ -220,7 +226,7 @@ ssize_t Sock::write(const char* buf, size_t len)
 	if (*sock != -1) {
 		ssize_t bytes = send(*sock, buf, len, MSG_DONTWAIT);
 
-		if (bytes <= 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+		if (bytes == -1 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
 			return 0;
 		} else if (bytes == -1) {
 			close(*sock);
@@ -259,7 +265,7 @@ uint16_t Sock::port()
 
 
 /*
- * Get remote hostname
+ * Get remote hostname.
  */
 string Sock::host()
 {
@@ -271,4 +277,13 @@ string Sock::host()
 	}
 
 	return name;
+}
+
+
+/*
+ * Get the socket descriptor.
+ */
+int Sock::get_raw()
+{
+	return *sock;
 }
