@@ -116,7 +116,6 @@ Sock::Sock(int descriptor) :
 bool Sock::alive()
 {
 	if (*sock == -1 || (fcntl(*sock, F_GETFL) == -1 && errno == EBADF)) {
-		fprintf(stderr, "not alive\n");
 		*sock = -1;
 		return false;
 	}
