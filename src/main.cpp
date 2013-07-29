@@ -215,5 +215,8 @@ int main(int argc, char** argv)
 		fprintf(stderr, "Completed. Closing connections...\n");
 	}
 
+	// Clear all connections
+	conns.clear(); 
+
 	return 0;
 }
