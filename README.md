@@ -1,7 +1,9 @@
 sfqtester
 =========
 
-A program to create TCP connections on multiple ports. It's meant for testing of SFQ and SFQ-based AQMs, where packets are put in a virtual queue based on a hash of sender IP, receiver IP and receiver port (so-called Bloom filters). To test this without having a bunch of hosts, it is easier to send to multiple receiver side ports.
+A program to create TCP connections on multiple ports. It's meant for testing of SFQ and SFQ-based AQMs (such as BLUE), where packets are put in a virtual queue based on a hash of sender IP, receiver IP and receiver port (so-called Bloom filters). To test this without having a bunch of hosts, it is easier to send to multiple receiver side ports.
+
+The reason for SFQ to hash just the triplet (sender IP, receiver IP, receiver port) and not including sender port, is that a host may create multiple TCP connections to the same port. Read more about SFQ and AQMs in general in the litterature.
 
 Note
 ----
@@ -18,7 +20,7 @@ Compiling
 
 Type `make` in the project root directory.
 
-*Note*: If you don't have `colorgcc` installed, just that in the `Makefile` to `gcc`
+**Note**: If you don't have `colorgcc` installed, just that in the `Makefile` to `gcc`. I really recommend `colorgcc` though, because it adds colors to your errors and warnings which is nice to filter line noise away.
 
 Run as a server
 ---------------
