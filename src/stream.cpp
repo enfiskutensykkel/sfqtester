@@ -3,23 +3,20 @@
 #include "stream.h"
 
 
+static char buffer[BUFFER_SIZE];
+
 Stream::Stream() :
 	Thread(),
-	buffer(NULL),
+	buffer(::buffer),
 	active(true),
 	established(false)
 {
-	buffer = new char[BUFFER_SIZE];
-	for (unsigned i = 0; i < BUFFER_SIZE; ++i) {
-		buffer[i] = 'A';
-	}
 }
 
 
 Stream::~Stream()
 {
 	stop();
-	delete[] buffer;
 }
 
 
