@@ -7,10 +7,11 @@
 #include <time.h>
 #include "barrier.h"
 #include "stream.h"
-#include "socket.h"
+
 
 using std::vector;
 using std::tr1::shared_ptr;
+
 
 
 static bool run = true;
@@ -34,9 +35,11 @@ int main(int argc, char** argv)
 
 	// Parse program arguments and options
 	int opt;
-	while ((opt = getopt(argc, argv, ":hc:p:q:n:i:t:")) != -1) {
+	while ((opt = getopt(argc, argv, ":hc:p:q:n:i:t:")) != -1) 
+	{
 		char* ptr;
-		switch (opt) {
+		switch (opt) 
+		{
 
 			// Missing a value for the option
 			case ':':
@@ -56,7 +59,8 @@ int main(int argc, char** argv)
 			// Set number of connections
 			case 'c':
 				ptr = NULL;
-				if ((num_conns = strtoul(optarg, &ptr, 0)) > 1024 || num_conns < 1 || ptr == NULL || *ptr != '\0') {
+				if ((num_conns = strtoul(optarg, &ptr, 0)) > 1024 || num_conns < 1 || ptr == NULL || *ptr != '\0') 
+				{
 					fprintf(stderr, "Option -c requires a valid number of connections [1-1024]\n");
 					return 'c';
 				}
@@ -65,7 +69,8 @@ int main(int argc, char** argv)
 			// Set the remote starting port
 			case 'p':
 				ptr = NULL;
-				if ((remote_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
+				if ((remote_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') 
+				{
 					fprintf(stderr, "Option -p requires a valid port number [0-65535]\n");
 					return 'p';
 				}
@@ -74,7 +79,8 @@ int main(int argc, char** argv)
 			// Set the local starting port
 			case 'q':
 				ptr = NULL;
-				if ((local_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
+				if ((local_port = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') 
+				{
 					fprintf(stderr, "Option -q requires a valid port number [0-65535]\n");
 					return 'p';
 				}
@@ -83,7 +89,8 @@ int main(int argc, char** argv)
 			// Set the size of the byte chunk to be sent
 			case 'n':
 				ptr = NULL;
-				if ((length = strtoul(optarg, &ptr, 0)) > BUFFER_SIZE || ptr == NULL || *ptr != '\0') {
+				if ((length = strtoul(optarg, &ptr, 0)) > BUFFER_SIZE || ptr == NULL || *ptr != '\0') 
+				{
 					fprintf(stderr, "Option -n requires a chunk size in bytes [1-%d] or 0 for off\n", BUFFER_SIZE);
 					return 'n';
 				}
@@ -92,7 +99,8 @@ int main(int argc, char** argv)
 			// Set the interval between each time a chunk is sent
 			case 'i':
 				ptr = NULL;
-				if ((interval = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') {
+				if ((interval = strtoul(optarg, &ptr, 0)) > 0xffff || ptr == NULL || *ptr != '\0') 
+				{
 					fprintf(stderr, "Option -i requires an interval in milliseconds [1-65535] or 0 for off\n");
 					return 'i';
 				}
@@ -102,7 +110,8 @@ int main(int argc, char** argv)
 			case 't':
 				ptr = NULL;
 				duration = strtoul(optarg, &ptr, 0);
-				if (ptr == NULL || *ptr != '\0') {
+				if (ptr == NULL || *ptr != '\0') 
+				{
 					fprintf(stderr, "Option -t requires a duration in seconds, or 0 for off\n");
 					return 't';
 				}
@@ -111,10 +120,13 @@ int main(int argc, char** argv)
 	}
 
 	// Check if all mandatory options were set
-	if (optind < argc && remote_port == 0) {
+	if (optind < argc && remote_port == 0) 
+	{
 		fprintf(stderr, "Option -p is required for client\n");
 		return 'p';
-	} else if (optind == argc && local_port == 0) {
+	} 
+	else if (optind == argc && local_port == 0) 
+	{
 		fprintf(stderr, "Option -q is required for server\n");
 		return 'q';
 	}
@@ -123,100 +135,55 @@ int main(int argc, char** argv)
 	// Handle interrupt signal
 	signal(SIGINT, (void (*)(int)) &terminate);
 
-	// Create a barrier
-	Barrier barrier(num_conns * (optind < argc) + 1);
+	vector< shared_ptr<Stream> > conns;
 
-	vector<shared_ptr<Stream> > conns;
-	
-	// Start connections
-	if (optind < argc) {
-		fprintf(stderr, "Starting %u connections...\n", num_conns);
-	} else {
-		fprintf(stderr, "Starting %u services...\n", num_conns);
-	}
+	// Create flows
+	if (optind < argc)
+	{
+		// Create a barrier
+		Barrier barrier(num_conns * (optind < argc) + 1);
 
-	for (unsigned i = 0; i < num_conns; ++i) {
-		if (optind < argc) {
-
-			Client* client;  
-			if (local_port > 0) {
-				client = new Client(barrier, argv[optind], remote_port + i, local_port + i);
-			} else {
-				client = new Client(barrier, argv[optind], remote_port + i);
-			}
-
-			client->set_interval(interval);
-			client->set_chunk_size(length);
-
-			client->start();
-			conns.push_back(shared_ptr<Stream>( static_cast<Stream*>(client) ));
-
-		} else {
-			Server* server = new Server(local_port + i);
-			server->start();
-			conns.push_back(shared_ptr<Stream>( static_cast<Stream*>(server) ));
+		for (unsigned i = 0; i < num_conns; ++i) 
+		{
 		}
+
+		// Synchronize with connections
+		barrier.wait();  
+	}
+	else
+	{
+		conns.push_back(shared_ptr<Stream>( new Server(local_port, num_conns) ));
 	}
 	
-	// Synchronize with connections
-	barrier.wait();  
-
-	// Count number of active connections
-	unsigned established = 0;
-	for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it) {
-		established += (*it)->is_active();
-	}
-
-	if (optind < argc) {
-		fprintf(stderr, "%u out of %u connections established.\n", established, num_conns);
-	} 
 
 	// Run until completion
 	unsigned long time_left = duration * 1000;
 	timespec timeout = {0, 1000000L}; 
 
-	if (optind < argc && duration > 0) {
+	if (optind < argc && duration > 0) 
+	{
 		fprintf(stderr, "Running for %u seconds...\n", duration);
-	} else if (optind < argc) {
+	} 
+	else if (optind < argc) 
+	{
 		fprintf(stderr, "Running...\n");
 	}
 
-	while (run) {
+	while (run && !conns.empty()) 
+	{
 
 		// Sleep for a millisecond if a duration is set
-		if (optind < argc && duration > 0) {
+		if (optind < argc && duration > 0) 
+		{
 			nanosleep(&timeout, NULL);
 
 			// Check if the time is up
-			if (--time_left == 0) {
-				break;
-			}
-		}
-		
-		if (optind < argc) {
-			// Count number of active connections
-			established = 0;
-			for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); run && it != conns.end(); ++it) {
-				established += (*it)->is_active();
-			}
-
-			// No active connections left, stop the program
-			if (established == 0) {
+			if (--time_left == 0) 
+			{
 				break;
 			}
 		}
 	}
-
-	if (!run) {
-		fprintf(stderr, "Aborted. Closing connections...\n");
-	} else if (established == 0) {
-		fprintf(stderr, "All connections closed by peer.\n");
-	} else if (optind < argc && time_left == 0) {
-		fprintf(stderr, "Completed. Closing connections...\n");
-	}
-
-	// Clear all connections
-	conns.clear(); 
 
 	return 0;
 }

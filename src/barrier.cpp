@@ -32,10 +32,13 @@ Barrier::~Barrier()
 void Barrier::wait()
 {
 	pthread_mutex_lock(&lock);
-	if (--num_waiting > 0) {
+	if (--num_waiting > 0)
+	{
 		// Wait until all threads reach this point
 		pthread_cond_wait(&waiting_queue, &lock);
-	} else {
+	} 
+	else 
+	{
 		// We are the last thread, wake everybody up and continue
 		num_waiting = num_threads;
 		pthread_cond_broadcast(&waiting_queue);
