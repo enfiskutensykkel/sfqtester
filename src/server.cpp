@@ -1,6 +1,6 @@
 #include "stream.h"
 #include <cstdlib>
-#include <vector>
+#include <string>
 #include <tr1/cstdint>
 #include <cstdio>
 #include <pthread.h>
@@ -10,10 +10,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
-
-
-using std::vector;
-
 
 
 void Server::accepter_thread(Server* server)
@@ -29,26 +25,40 @@ void Server::accepter_thread(Server* server)
 
 		for (int i = 0; i < num_evts; ++i)
 		{
-			if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP) || !(events[i].events & EPOLLIN))
+			if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP) || !(events[i].events & EPOLLIN))
 			{
 				// TODO: Notify that the socket is broken
 				close(events[i].data.fd);
 				continue;
 			}
 
-			int sock = accept(events[i].data.fd, NULL, NULL);
-
-			if (sock != -1)
+			while (true)
 			{
-				int flag = fcntl(sock, F_GETFL, 0);
-				fcntl(sock, F_SETFL, flag | O_NONBLOCK);
+				int sock = accept(events[i].data.fd, NULL, NULL);
 
-				epoll_event evt = {0, 0}; 
-				evt.data.fd = sock;
-				evt.events = EPOLLIN | EPOLLET;
-				
-				epoll_ctl(server->cfd[thread], EPOLL_CTL_ADD, sock, &evt);
-				thread = (thread + 1) % RECV_THREADS;
+				if (sock != -1)
+				{
+					int flag = fcntl(sock, F_GETFL, 0);
+					fcntl(sock, F_SETFL, flag | O_NONBLOCK);
+
+					epoll_event evt = {0, {0}};
+					evt.data.fd = sock;
+					evt.events = EPOLLIN;
+
+					epoll_ctl(server->cfd[thread], EPOLL_CTL_ADD, sock, &evt);
+					thread = (thread + 1) % RECV_THREADS;
+					
+					// Load info about the connection
+					std::string name;
+					uint16_t lport, rport;
+					server->remote(sock, name, rport);
+					server->local(sock, lport);
+					fprintf(stdout, "%u: Connected to %s:%u\n", lport, name.c_str(), rport);
+				}
+				else
+				{
+					break;
+				}
 			}
 		}
 	}
@@ -74,32 +84,40 @@ void Server::reader_thread(Server* server)
 	// Main loop
 	while (server->state == RUNNING)
 	{
-		int num_evts = epoll_wait(server->cfd[idx], events, BACKLOG, 5);
+		int num_evts = epoll_wait(server->cfd[idx], events, BACKLOG, 2);
 		if (num_evts == -1)
 			goto break_out;
 
 		for (int i = 0; i < num_evts; ++i)
 		{
-			if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP) || !(events[i].events & EPOLLIN))
+			if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP) || !(events[i].events & EPOLLIN))
 			{
-				// TODO: Notify that the connection is broken
+				uint16_t port;
+				server->local(events[i].data.fd, port);
+				fprintf(stdout, "%u: Broken connection\n", port);
 				close(events[i].data.fd);
 				continue;
 			}
 
-			size_t bytes;
 
-		   	while (server->state == RUNNING && (bytes = read(events[i].data.fd, buffer, sizeof(buffer))) > 0)
-				printf("%s", buffer);
+			ssize_t bytes;
+			while (server->state == RUNNING && (bytes = read(events[i].data.fd, buffer, sizeof(buffer))) == BUFFER_SIZE);
 
 			if (bytes == 0)
 			{
-				// TODO: Notify that the connection is closed
+				std::string name;
+				uint16_t lport, rport;
+				server->remote(events[i].data.fd, name, rport);
+				server->local(events[i].data.fd, lport);
 				close(events[i].data.fd);
+
+				fprintf(stdout, "%u: Disconnecting from %s:%u\n", lport, name.c_str(), rport);
 			}
 			else if (bytes == -1 && errno != EAGAIN)
 			{
-				// TODO: Notify that the connection is broken
+				uint16_t port;
+				server->local(events[i].data.fd, port);
+				fprintf(stdout, "%u: Broken connection\n", port);
 				close(events[i].data.fd);
 				goto break_out;
 			}
@@ -143,11 +161,11 @@ Server::Server(uint16_t port, unsigned conns)
 	// Create listen sockets
 	for (unsigned i = 0; i < conns; ++i)
 	{
-		epoll_event ev = { 0, NULL }; // Valgrind complains about unitialized bytes
+		epoll_event ev = {0, {0}}; // Valgrind complains about unitialized bytes
 		int sock = Stream::sock(port + i);
 
 		ev.data.fd = sock;
-		ev.events = EPOLLIN | EPOLLET;
+		ev.events = EPOLLIN;
 
 		if (epoll_ctl(lfd, EPOLL_CTL_ADD, sock, &ev) == -1)
 			throw "Failed to add descriptor to epoll set";

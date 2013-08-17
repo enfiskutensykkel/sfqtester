@@ -1,5 +1,6 @@
 #include "stream.h"
 #include <sstream>
+#include <string>
 #include <tr1/cstdint>
 #include <sys/types.h>
 #include <netdb.h>
@@ -24,6 +25,46 @@ static bool load_addrinfo(addrinfo*& info, const char* host, uint16_t port)
 	converter << port;
 
 	return getaddrinfo(host, converter.str().c_str(), &hints, &info) == 0;
+}
+
+
+
+bool Stream::remote(int sock, std::string& host, uint16_t& port)
+{
+	sockaddr_in addr;
+	socklen_t len;
+
+	// Load info about the other end (the peer)
+	len = sizeof(addr);
+	if (getpeername(sock, reinterpret_cast<sockaddr*>(&addr), &len) == -1)
+		return false;
+
+	// Extract the hostname and remote port
+	char name[INET_ADDRSTRLEN];
+	if (getnameinfo(reinterpret_cast<sockaddr*>(&addr), (socklen_t) sizeof(addr), name, sizeof(name), NULL, 0, NI_NUMERICHOST) != 0)
+		return false;
+
+	host = std::string(name);
+	port = ntohs(addr.sin_port);
+
+	return true;
+}
+
+
+
+bool Stream::local(int sock, uint16_t& port)
+{
+	sockaddr_in addr;
+	socklen_t len;
+
+	// Load info about this end
+	len = sizeof(addr);
+	if (getsockname(sock, reinterpret_cast<sockaddr*>(&addr), &len) == -1)
+		return false;
+
+	port = ntohs(addr.sin_port);
+
+	return true;
 }
 
 
