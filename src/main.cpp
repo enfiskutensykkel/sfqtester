@@ -33,6 +33,9 @@ int main(int argc, char** argv)
 	unsigned length = 0;
 	unsigned duration = 0;
 
+	// Handle interrupt signal
+	signal(SIGINT, (void (*)(int)) &terminate);
+
 	// Parse program arguments and options
 	int opt;
 	while ((opt = getopt(argc, argv, ":hc:p:q:n:i:t:")) != -1) 
@@ -132,9 +135,6 @@ int main(int argc, char** argv)
 	}
 
 
-	// Handle interrupt signal
-	signal(SIGINT, (void (*)(int)) &terminate);
-
 	vector< shared_ptr<Stream> > conns;
 
 	// Create flows
@@ -152,7 +152,15 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		conns.push_back(shared_ptr<Stream>( new Server(local_port, num_conns) ));
+		try
+		{
+			conns.push_back(shared_ptr<Stream>( new Server(local_port, num_conns) ));
+		}
+		catch (const char* exception)
+		{
+			fprintf(stderr, "Unexpected error: %s\n", exception);
+			run = false;
+		}
 	}
 	
 
