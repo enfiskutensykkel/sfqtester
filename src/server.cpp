@@ -1,4 +1,5 @@
 #include "stream.h"
+#include "sock.h"
 #include <map>
 #include <cstdlib>
 #include <string>
