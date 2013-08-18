@@ -160,8 +160,14 @@ bool Sock::peer(uint16_t& port)
 
 bool Sock::host(uint16_t& port)
 {
-	port = 0;
-	return false;
+	sockaddr_in addr;
+
+	socklen_t len = sizeof(addr);
+	if (getsockname(*sfd, reinterpret_cast<sockaddr*>(&addr), &len) == -1)
+		return false;
+
+	port = ntohs(addr.sin_port);
+	return true;
 }
 
 

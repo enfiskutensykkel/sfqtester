@@ -59,6 +59,7 @@ void Server::accepter_thread(Server* server)
 					Sock socket(sock);
 					server->socks.insert(std::pair<int,Sock>(sock, socket));
 
+					// Output connection information
 					socket.peer(hostname);
 					socket.peer(remote_port);
 					socket.host(local_port);
@@ -198,7 +199,7 @@ Server::Server(uint16_t port, unsigned conns)
 	{
 		if (pthread_create(&receivers[i], &attr, (void* (*)(void*)) receiver_thread, (void*) this) != 0)
 		{
-			// TODO: Handle error
+			throw "Failed to create receiver thread";
 		}
 	}
 
