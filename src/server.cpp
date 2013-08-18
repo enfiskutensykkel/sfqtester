@@ -1,4 +1,5 @@
 #include "stream.h"
+#include <map>
 #include <cstdlib>
 #include <string>
 #include <tr1/cstdint>
@@ -8,14 +9,19 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <sys/socket.h>
+
+using std::map;
+
 
 
 void Server::accepter_thread(Server* server)
 {
 	epoll_event* events = server->events;
-	int thread = 0;
+	int thread = 0; // round robin scheduling
+
+	uint16_t remote_port, local_port;
+	std::string hostname;
 
 	while (server->state == RUNNING)
 	{
@@ -25,35 +31,39 @@ void Server::accepter_thread(Server* server)
 
 		for (int i = 0; i < num_evts; ++i)
 		{
+			// Check for problems with epoll
 			if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP) || !(events[i].events & EPOLLIN))
 			{
-				// TODO: Notify that the socket is broken
-				close(events[i].data.fd);
+				server->socks.erase(events[i].data.fd);
 				continue;
 			}
 
 			while (true)
 			{
+				// Accept incomming connections
 				int sock = accept(events[i].data.fd, NULL, NULL);
 
+				// We have a connection
 				if (sock != -1)
 				{
-					int flag = fcntl(sock, F_GETFL, 0);
-					fcntl(sock, F_SETFL, flag | O_NONBLOCK);
-
+					// Add to epoll descriptor for a thread
 					epoll_event evt = {0, {0}};
 					evt.data.fd = sock;
 					evt.events = EPOLLIN;
-
 					epoll_ctl(server->cfd[thread], EPOLL_CTL_ADD, sock, &evt);
+
+					// Update thread index
 					thread = (thread + 1) % RECV_THREADS;
-					
-					// Load info about the connection
-					std::string name;
-					uint16_t lport, rport;
-					server->remote(sock, name, rport);
-					server->local(sock, lport);
-					fprintf(stdout, "%u: Connected to %s:%u\n", lport, name.c_str(), rport);
+
+					// Add connection to the map of connections
+					Sock socket(sock);
+					server->socks.insert(std::pair<int,Sock>(sock, socket));
+
+					socket.peer(hostname);
+					socket.peer(remote_port);
+					socket.host(local_port);
+					fprintf(stdout, "%u: Connected to %s:%u (%d)\n", local_port, hostname.c_str(), remote_port, sock);
+					fflush(stdout);
 				}
 				else
 				{
@@ -68,18 +78,20 @@ void Server::accepter_thread(Server* server)
 
 
 
-void Server::reader_thread(Server* server)
+void Server::receiver_thread(Server* server)
 {
 	// Get thread number
 	int idx;
 	for (idx = 0; idx < RECV_THREADS; ++idx)
 	{
-		if (server->readers[idx] == pthread_self())
+		if (server->receivers[idx] == pthread_self())
 			break;
 	}
 
 	epoll_event events[BACKLOG];
 	char buffer[BUFFER_SIZE];
+	uint16_t remote_port, local_port;
+	std::string hostname;
 
 	// Main loop
 	while (server->state == RUNNING)
@@ -90,35 +102,39 @@ void Server::reader_thread(Server* server)
 
 		for (int i = 0; i < num_evts; ++i)
 		{
+			// Get connection information
+			map<int,Sock>::iterator sock = server->socks.find(events[i].data.fd);
+			sock->second.peer(hostname);
+			sock->second.peer(remote_port);
+			sock->second.host(local_port);
+
+			// Check for problems with epoll
 			if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP) || !(events[i].events & EPOLLIN))
 			{
-				uint16_t port;
-				server->local(events[i].data.fd, port);
-				fprintf(stdout, "%u: Broken connection\n", port);
-				close(events[i].data.fd);
+				server->socks.erase(sock);
+				fprintf(stdout, "%u: Connection to %s:%u broken (%d)\n", local_port, hostname.c_str(), remote_port, events[i].data.fd);
+				fflush(stdout);
 				continue;
 			}
 
 
+			// Read from socket descriptor
 			ssize_t bytes;
 			while (server->state == RUNNING && (bytes = read(events[i].data.fd, buffer, sizeof(buffer))) == BUFFER_SIZE);
 
 			if (bytes == 0)
 			{
-				std::string name;
-				uint16_t lport, rport;
-				server->remote(events[i].data.fd, name, rport);
-				server->local(events[i].data.fd, lport);
-				close(events[i].data.fd);
-
-				fprintf(stdout, "%u: Disconnecting from %s:%u\n", lport, name.c_str(), rport);
+				// Connection closed by peer
+				server->socks.erase(sock);
+				fprintf(stdout, "%u: Closing connection to %s:%u (%d)\n", local_port, hostname.c_str(), remote_port, events[i].data.fd);
+				fflush(stdout);
 			}
 			else if (bytes == -1 && errno != EAGAIN)
 			{
-				uint16_t port;
-				server->local(events[i].data.fd, port);
-				fprintf(stdout, "%u: Broken connection\n", port);
-				close(events[i].data.fd);
+				// Something is wrong
+				server->socks.erase(sock);
+				fprintf(stdout, "%u: Connection to %s:%u broken (%d)\n", local_port, hostname.c_str(), remote_port, events[i].data.fd);
+				fflush(stdout);
 				goto break_out;
 			}
 		}
@@ -127,9 +143,6 @@ void Server::reader_thread(Server* server)
 break_out:
 	pthread_exit(NULL);
 }
-
-
-
 
 
 
@@ -162,13 +175,18 @@ Server::Server(uint16_t port, unsigned conns)
 	for (unsigned i = 0; i < conns; ++i)
 	{
 		epoll_event ev = {0, {0}}; // Valgrind complains about unitialized bytes
-		int sock = Stream::sock(port + i);
+		fprintf(stdout, "%u: Starting service\n", port + i);
+		fflush(stdout);
 
-		ev.data.fd = sock;
+		Sock sock = Sock::create(port + i);
+
+		ev.data.fd = sock.raw();
 		ev.events = EPOLLIN;
 
-		if (epoll_ctl(lfd, EPOLL_CTL_ADD, sock, &ev) == -1)
+		if (epoll_ctl(lfd, EPOLL_CTL_ADD, sock.raw(), &ev) == -1)
 			throw "Failed to add descriptor to epoll set";
+
+		socks.insert(std::pair<int,Sock>(sock.raw(), sock));
 	}
 	
 	// Try to create accept thread
@@ -178,7 +196,7 @@ Server::Server(uint16_t port, unsigned conns)
 	// Try to create reader threads
 	for (int i = 0; i < RECV_THREADS; ++i)
 	{
-		if (pthread_create(&readers[i], &attr, (void* (*)(void*)) reader_thread, (void*) this) != 0)
+		if (pthread_create(&receivers[i], &attr, (void* (*)(void*)) receiver_thread, (void*) this) != 0)
 		{
 			// TODO: Handle error
 		}
@@ -194,9 +212,16 @@ Server::~Server()
 	state = STOPPING;
 
 	for (int i = 0; i < RECV_THREADS; ++i)
-		pthread_join(readers[i], NULL);
+		pthread_join(receivers[i], NULL);
 
 	pthread_join(accepter, NULL);
+
+	for (map<int,Sock>::iterator it = socks.begin(); it != socks.end(); ++it)
+	{
+		if (it->second.connected())
+			it->second.close();
+	}
+	socks.clear();
 
 	free(events);
 }

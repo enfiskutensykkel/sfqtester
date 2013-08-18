@@ -1,23 +1,18 @@
 #ifndef __STREAMER_H__
 #define __STREAMER_H__
 
-#include <string>
+#include "sock.h"
+#include <map>
 #include <tr1/cstdint>
 #include <pthread.h>
 #include <sys/epoll.h>
 
 
+
 class Stream
 {
 	public:
-		virtual ~Stream(void) = 0;
-
-	protected:
-		static bool remote(int sock, std::string& host, uint16_t& port);
-		static bool local(int sock, uint16_t& local_port);
-		static int sock(const char* hostname, uint16_t remote_port, uint16_t local_port);
-		static int sock(const char* hostname, uint16_t port);
-		static int sock(uint16_t port);
+		virtual ~Stream(void);
 };
 
 
@@ -32,13 +27,15 @@ class Server: public Stream
 		enum {RUNNING, STOPPING} state;
 		unsigned conns;
 		pthread_t accepter;
-	   	pthread_t readers[RECV_THREADS];
+	   	pthread_t receivers[RECV_THREADS];
+
+		std::map<int, Sock> socks;
 
 		int lfd, cfd[RECV_THREADS];
 		epoll_event* events;
-		
+
 		static void accepter_thread(Server*);
-		static void reader_thread(Server*);
+		static void receiver_thread(Server*);
 };
 
 #endif
