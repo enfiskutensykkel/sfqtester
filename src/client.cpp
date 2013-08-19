@@ -170,19 +170,18 @@ void Client::run()
 	else
 		sfd = Sock::create(hostname, remote_port);
 
-	// Synchronize with other clients by waiting on the barrier
-	barrier.wait();
-
 	if (sfd == -1)
 	{
+		barrier.wait();
 		fprintf(stderr, "Couldn't connect to %s:%u\n", hostname, remote_port);
 		return;
 	}
 
 	// Create sock instance and get connection information
 	Sock sock(sfd);
-	if (sfd != sock.raw())
+	if (sfd != sock.raw() || !sock.alive())
 	{
+		barrier.wait();
 		fprintf(stderr, "Something is wrong.\n");
 		return;
 	}
@@ -195,6 +194,8 @@ void Client::run()
 	fprintf(stdout, "%s:%u Connection established (%d)\n", host.c_str(), port, sock.raw());
 	fflush(stdout);
 
+	// Synchronize with other clients by waiting on the barrier
+	barrier.wait();
 
 	// Create temporary variables
 	timespec timeout = {0, 1000000L};
@@ -241,6 +242,7 @@ void Client::run()
 	}
 
 break_out:
+	sock.close(); // FIXME: We shouldn't theoretically need this, there is some race condition with RAII
 	fprintf(stdout, "%s:%u Disconnecting (%d)\n", host.c_str(), port, sfd);
 	fflush(stdout);
 	return;
