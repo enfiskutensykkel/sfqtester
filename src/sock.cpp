@@ -194,11 +194,11 @@ void close_sock(int* sfd)
 Sock::Sock(int fd)
 	: sfd( new int(fd), &close_sock )
 {
-	// TODO: Check if valid socket descriptor
-
-	// Set descriptor to non-blocking
+	// TODO: Validate descriptor
+	
 	if (*sfd != -1)
 	{
+		// Set descriptor to non-blocking
 		int flag = fcntl(*sfd, F_GETFL, 0);
 		fcntl(*sfd, F_SETFL, flag | O_NONBLOCK);
 	}
