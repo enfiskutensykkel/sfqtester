@@ -209,17 +209,32 @@ bool Sock::connected()
 {
 	if (*sfd != -1)
 	{
-		// TODO: Check if descriptor is still alive
+		if (!alive())
+			return false;
+
+		// Check if sfd is a socket created by accept()
 		int flag = 0;
 		socklen_t len = sizeof(flag);
 		getsockopt(*sfd, SOL_SOCKET, SO_ACCEPTCONN, &flag, &len);
 		return flag != 0;
-
 	}
 	else
 	{
 		return false;
 	}
+}
+
+
+
+bool Sock::alive()
+{
+	if (*sfd == -1 || (fcntl(*sfd, F_GETFL) == -1 && errno == EBADF))
+	{
+		*sfd = -1;
+		return false;
+	}
+
+	return true;
 }
 
 

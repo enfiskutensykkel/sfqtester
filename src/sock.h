@@ -11,6 +11,7 @@ class Sock
 	public:
 		int raw(void);
 		bool connected(void);
+		bool alive(void);
 		void close(void);
 
 		bool peer(std::string& hostname);
