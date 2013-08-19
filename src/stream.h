@@ -4,6 +4,7 @@
 #include "sock.h"
 #include "barrier.h"
 #include <map>
+#include <cstddef>
 #include <tr1/cstdint>
 #include <pthread.h>
 #include <sys/epoll.h>
@@ -46,14 +47,32 @@ class Client: public Stream
 	public:
 		Client(Barrier& barrier, const char* hostname, uint16_t remote_port, uint16_t local_port = 0);
 		~Client(void);
+
+		bool set_chunk_size(size_t bytes);
+		bool set_interval(unsigned ms);
+
+		void start(void);
+		void stop(void);
 	
 	private:
-		enum { STARTED, STOPPED } state;
-		Barrier& barrier;
-		Sock sock;
+		enum { INIT, STARTED, RUNNING, STOPPED } state;
 		pthread_t id;
+		pthread_mutex_t mutex;
+		pthread_cond_t start_signal;
+		pthread_cond_t stop_signal;
 
-		static void run(Client*);
+		Barrier& barrier;
+
+		const char* hostname;
+		uint16_t remote_port;
+		uint16_t local_port;
+
+		char* buf;
+		size_t buflen;
+		unsigned ival;
+
+		void run(void);
+		static void dispatch(Client*);
 };
 
 #endif

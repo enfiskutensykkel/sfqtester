@@ -1,13 +1,35 @@
 #include "stream.h"
 #include "sock.h"
 #include "barrier.h"
+#include <cstddef>
+#include <tr1/cstdint>
+#include <cstdio>
+#include <string>
+#include <time.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <errno.h>
 
 
 
 Client::Client(Barrier& barr, const char* host, uint16_t rem_port, uint16_t loc_port)
-	: state(STARTED), barrier(barr), sock(-1)
+	: state(INIT), barrier(barr), hostname(host), remote_port(rem_port), local_port(loc_port),
+	  buf(NULL), buflen(BUFFER_SIZE), ival(0)
 {
+	// Allocate buffer memory
+	buf = new char[buflen];
+	if (buf == NULL)
+	{
+		throw "Out of memory";
+	}
+
+	// Initialize synchronization primitives
+	pthread_mutex_init(&mutex, NULL);
+	pthread_cond_init(&start_signal, NULL);
+	pthread_cond_init(&stop_signal, NULL);
+
+	pthread_mutex_lock(&mutex);
+
 	// Create thread attributes
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
@@ -15,26 +37,25 @@ Client::Client(Barrier& barr, const char* host, uint16_t rem_port, uint16_t loc_
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
-	// Create socket descriptor
-	if (loc_port != 0)
-		sock = Sock::create(host, rem_port, loc_port);
-	else
-		sock = Sock::create(host, rem_port);
-
-	if (sock.raw() == -1)
-	{
-		throw "Failed to create socket descriptor";
-	}
-
 	// Try to create thread
-	if (pthread_create(&id, &attr, (void* (*)(void*)) &run, (void*) this) != 0)
+	if (pthread_create(&id, &attr, (void* (*)(void*)) &dispatch, (void*) this) == 0)
+	{
+		// Hold until the created thread reaches a certain execution point
+		pthread_cond_wait(&stop_signal, &mutex);
+
+		// Mark thread as started
+		state = STARTED;
+	}
+	else
 	{
 		// Failed to create thread
 		// TODO: Better error handling
-		throw "Failed to create thread";
+		//throw "Failed to create thread";
+		state = STOPPED;
 	}
+	pthread_mutex_unlock(&mutex);
 
-	// Clean up
+	// Clean up thread attributes
 	pthread_attr_destroy(&attr);
 }
 
@@ -42,25 +63,206 @@ Client::Client(Barrier& barr, const char* host, uint16_t rem_port, uint16_t loc_
 
 Client::~Client()
 {
-	if (state != STOPPED)
-	{
-		state = STOPPED;
-		pthread_join(id, NULL);
-	}
+	// Stop thread
+	stop();
+
+	// Destroy synchronization primitives
+	pthread_mutex_destroy(&mutex);
+	pthread_cond_destroy(&start_signal);
+	pthread_cond_destroy(&stop_signal);
+
+	// Free buffer memory
+	delete[] buf;
 }
 
 
 
-
-void Client::run(Client* client)
+bool Client::set_chunk_size(size_t bytes)
 {
-	// Wait on the barrier
-	client->barrier.wait();
+	bool success = false;
 
-	// TODO: Do stuff
-	while (client->state == STARTED)
+	pthread_mutex_lock(&mutex);
+	if (state == STARTED)
 	{
+		char* temp = new char[bytes];
+		if (temp != NULL)
+		{
+			delete[] buf;
+			buf = temp;
+			buflen = bytes;
+			success = true;
+		}
+	}
+	pthread_mutex_unlock(&mutex);
+
+	return success;
+}
+
+
+
+bool Client::set_interval(unsigned ms)
+{
+	bool success = false;
+
+	pthread_mutex_lock(&mutex);
+	if (state == STARTED)
+	{
+		ival = ms;
+		success = true;
+	}
+	pthread_mutex_unlock(&mutex);
+
+	return success;
+}
+
+
+
+void Client::start()
+{
+	pthread_mutex_lock(&mutex);
+	if (state == STARTED)
+	{
+		// Mark the thread as running
+		state = RUNNING;
+
+		// Signal to the waiting thread that it's good to go
+		pthread_cond_signal(&start_signal);
+	}
+	pthread_mutex_unlock(&mutex);
+}
+
+
+
+void Client::stop()
+{
+	pthread_mutex_lock(&mutex);
+	if (state != STOPPED)
+	{
+		// The client hasn't called start(), signal to the waiting thread that
+		// it should start and stop immediatly
+		if (state != RUNNING)
+		{
+			state = STOPPED;
+			pthread_cond_signal(&start_signal);
+			pthread_cond_wait(&stop_signal, &mutex);
+		}
+
+		// Wait for the thread to finish up
+		state = STOPPED;
+		pthread_join(id, NULL);
+	}
+	pthread_mutex_unlock(&mutex);
+}
+
+
+
+void Client::run()
+{
+	// Create socket descriptor
+	int sfd = -1;
+
+	if (local_port != 0)
+		sfd = Sock::create(hostname, remote_port, local_port);
+	else
+		sfd = Sock::create(hostname, remote_port);
+
+	// Synchronize with other clients by waiting on the barrier
+	barrier.wait();
+
+	if (sfd == -1)
+	{
+		fprintf(stderr, "Couldn't connect to %s:%u\n", hostname, remote_port);
+		return;
 	}
 
+	// Create sock instance and get connection information
+	Sock sock(sfd);
+	if (sfd != sock.raw())
+	{
+		fprintf(stderr, "Something is wrong.\n");
+		return;
+	}
+
+	std::string host;
+	uint16_t port;
+	sock.peer(host);
+	sock.peer(port);
+
+	fprintf(stdout, "%s:%u Connection established (%d)\n", host.c_str(), port, sock.raw());
+	fflush(stdout);
+
+
+	// Create temporary variables
+	timespec timeout = {0, 1000000L};
+	ssize_t remaining, sent;
+	uint64_t interval;
+	bool full = false;
+
+	// Write loop
+	while (state == RUNNING && sock.connected())
+	{
+		// Sleep for an interval
+		interval = ival;
+		while (state == RUNNING && interval--)
+			nanosleep(&timeout, NULL);
+
+		// Send a chunk of data
+		remaining = buflen;
+		sent = 0;
+		while (state == RUNNING && sock.connected() && remaining > 0)
+		{
+			sent = send(sfd, buf, buflen, MSG_DONTWAIT);
+
+			if (sent == -1 && (errno == EWOULDBLOCK || errno == EAGAIN))
+				break;
+			else if (sent == -1)
+				goto break_out;
+
+			// Check if send buffer is full
+			if (ival > 0 && !full && sent == 0)
+			{
+				full = true;
+				fprintf(stdout, "%s:%u Send buffer full (%d)\n", host.c_str(), port, sfd);
+				fflush(stdout);
+			}
+			else if (full && sent > 0)
+			{
+				full = false;
+				fprintf(stdout, "%s:%u Send buffer cleared (%d)\n", host.c_str(), port, sfd);
+				fflush(stdout);
+			}
+
+			remaining -= sent;
+		}
+	}
+
+break_out:
+	fprintf(stdout, "%s:%u Disconnecting (%d)\n", host.c_str(), port, sfd);
+	fflush(stdout);
+	return;
+}
+
+
+
+void Client::dispatch(Client* client)
+{
+	pthread_mutex_lock(&client->mutex);
+
+	// Notify parent thread that we have reached the execution point
+	pthread_cond_signal(&client->stop_signal);
+
+	// Wait until further notice
+	pthread_cond_wait(&client->start_signal, &client->mutex);
+
+	// Check if we are still good to go
+	bool run = client->state == RUNNING;
+
+	pthread_mutex_unlock(&client->mutex);
+
+	// Do the thread action
+	if (run)
+		client->run();
+
+	pthread_cond_signal(&client->stop_signal);
 	pthread_exit(NULL);
 }

@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 	unsigned remote_port = 0;
 	unsigned local_port = 0;
 	unsigned interval = 0;
-	unsigned length = 0;
+	unsigned length = BUFFER_SIZE;
 	unsigned duration = 0;
 
 	// Handle interrupt signal
@@ -147,10 +147,18 @@ int main(int argc, char** argv)
 
 			for (unsigned i = 0; i < num_conns; ++i) 
 			{
+				Client* client;
+
 				if (local_port != 0)
-					conns.push_back(shared_ptr<Stream>( new Client(barrier, argv[optind], remote_port + i, local_port + i) ));
+					client = new Client(barrier, argv[optind], remote_port + i, local_port + i);
 				else
-					conns.push_back(shared_ptr<Stream>( new Client(barrier, argv[optind], remote_port + i) ));
+					client = new Client(barrier, argv[optind], remote_port + i);
+
+				client->set_chunk_size(length);
+				client->set_interval(interval);
+				client->start();
+
+				conns.push_back(shared_ptr<Stream>(client));
 			}
 
 			// Synchronize with connections
@@ -163,6 +171,7 @@ int main(int argc, char** argv)
 	}
 	catch (const char* exception)
 	{
+		// TODO: Better error handling, we probably don't want to stop everything if one of N threads/connections fail
 		fprintf(stderr, "Unexpected error: %s\n", exception);
 		run = false;
 	}
