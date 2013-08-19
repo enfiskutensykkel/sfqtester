@@ -17,9 +17,9 @@ class Sock
 		bool peer(uint16_t& port);
 		bool host(uint16_t& port);
 
-		static Sock create(uint16_t port);
-		static Sock create(const char* hostname, uint16_t remote_port);
-		static Sock create(const char* hostname, uint16_t remote_port, uint16_t local_port);
+		static int create(uint16_t port);
+		static int create(const char* hostname, uint16_t remote_port);
+		static int create(const char* hostname, uint16_t remote_port, uint16_t local_port);
 
 		Sock(int sockfd);
 
