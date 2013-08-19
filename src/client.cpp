@@ -11,6 +11,8 @@
 #include <errno.h>
 
 
+static char shared_buffer[BUFFER_SIZE];
+
 
 Client::Client(Barrier& barr, const char* host, uint16_t rem_port, uint16_t loc_port)
 	: state(INIT), barrier(barr), hostname(host), remote_port(rem_port), local_port(loc_port),
@@ -69,7 +71,8 @@ Client::~Client()
 	pthread_cond_destroy(&stop_signal);
 
 	// Free buffer memory
-	delete[] buf;
+//	if (buf != NULL)
+//		delete[] buf;
 }
 
 
@@ -84,18 +87,22 @@ bool Client::set_chunk_size(size_t bytes)
 	pthread_mutex_lock(&mutex);
 	if (state == STARTED || state == INIT)
 	{
-		char* temp = new char[bytes];
-		if (temp != NULL)
-		{
-			if (buf != NULL)
-				delete[] buf;
-			buf = temp;
-			buflen = bytes;
-			success = true;
-
-			for (unsigned i = 0; i < bytes; ++i)
-				buf[i] = 'A';
-		}
+		if (buf == NULL)
+			buf = shared_buffer;
+		buflen = bytes;
+		success = true;
+//		char* temp = new char[bytes];
+//		if (temp != NULL)
+//		{
+//			if (buf != NULL)
+//				delete[] buf;
+//			buf = temp;
+//			buflen = bytes;
+//			success = true;
+//
+//			for (unsigned i = 0; i < bytes; ++i)
+//				buf[i] = 'A';
+//		}
 	}
 	pthread_mutex_unlock(&mutex);
 
@@ -171,20 +178,12 @@ void Client::run()
 		sfd = Sock::create(hostname, remote_port);
 
 	if (sfd == -1)
-	{
-		barrier.wait();
-		fprintf(stderr, "Couldn't connect to %s:%u\n", hostname, remote_port);
-		return;
-	}
+		throw "Can't connect";
 
 	// Create sock instance and get connection information
 	Sock sock(sfd);
 	if (sfd != sock.raw() || !sock.alive())
-	{
-		barrier.wait();
-		fprintf(stderr, "Something is wrong.\n");
-		return;
-	}
+		throw "Something is wrong";
 
 	std::string host;
 	uint16_t port;
@@ -220,6 +219,8 @@ void Client::run()
 
 			if (sent == -1 && (errno == EWOULDBLOCK || errno == EAGAIN))
 				break;
+			else if (sent == -1 && errno == EPIPE)
+				goto break_out;
 			else if (sent == -1)
 				goto break_out;
 
@@ -242,7 +243,7 @@ void Client::run()
 	}
 
 break_out:
-	sock.close(); // FIXME: We shouldn't theoretically need this, there is some race condition with RAII
+	//sock.close(); // FIXME: We shouldn't theoretically need this, there is some race condition with RAII
 	fprintf(stdout, "%s:%u Disconnecting (%d)\n", host.c_str(), port, sfd);
 	fflush(stdout);
 	return;
@@ -266,8 +267,17 @@ void Client::dispatch(Client* client)
 	pthread_mutex_unlock(&client->mutex);
 
 	// Do the thread action
-	if (client->_active)
-		client->run();
+	try
+	{
+		if (client->_active)
+			client->run();
+	}
+	catch (const char* exception)
+	{
+		client->_active = false;
+		fprintf(stderr, "Couldn't connect to %s:%u: %s\n", client->hostname, client->remote_port, exception);
+		client->barrier.wait();
+	}
 
 	client->_active = false;
 	pthread_cond_signal(&client->stop_signal);

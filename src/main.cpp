@@ -35,6 +35,7 @@ int main(int argc, char** argv)
 
 	// Handle interrupt signal
 	signal(SIGINT, (void (*)(int)) &terminate);
+	signal(SIGPIPE, SIG_IGN); // Ignore SIGPIPE, so that we can close sockets properly
 
 	// Parse program arguments and options
 	int opt;
@@ -179,14 +180,16 @@ int main(int argc, char** argv)
 	
 
 	// Count number of established connections
-	unsigned established = 0;
-	for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it)
-		established += (*it)->active();
-	
+	unsigned established = 1;
 	if (optind < argc)
 	{
+		established = 0;
+		for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it)
+			established += (*it)->active();
+
 		fprintf(stderr, "%u out of %u connections established.\n", established, num_conns);
-		run = established > 0;
+		if (established == 0)
+			return 1;
 	}
 
 	// Run until completion
@@ -228,7 +231,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	
+
 	// Output status
 	if (!run)
 		fprintf(stderr, "Aborted. Closing connections...\n");
