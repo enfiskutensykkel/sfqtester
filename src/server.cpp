@@ -192,13 +192,13 @@ Server::Server(uint16_t port, unsigned conns)
 	}
 	
 	// Try to create accept thread
-	if (pthread_create(&accepter, &attr, (void* (*)(void*)) accepter_thread, (void*) this) != 0)
+	if (pthread_create(&accepter, &attr, (void* (*)(void*)) &accepter_thread, (void*) this) != 0)
 		throw "Failed to create accepter thread";
 
 	// Try to create reader threads
 	for (int i = 0; i < RECV_THREADS; ++i)
 	{
-		if (pthread_create(&receivers[i], &attr, (void* (*)(void*)) receiver_thread, (void*) this) != 0)
+		if (pthread_create(&receivers[i], &attr, (void* (*)(void*)) &receiver_thread, (void*) this) != 0)
 		{
 			throw "Failed to create receiver thread";
 		}
