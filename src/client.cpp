@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <errno.h>
+#include <limits.h>
 
 
 static char shared_buffer[BUFFER_SIZE];
@@ -32,6 +33,7 @@ Client::Client(Barrier& barr, const char* host, uint16_t rem_port, uint16_t loc_
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	pthread_attr_setstacksize(&attr, 16000);
+	//pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
@@ -243,7 +245,6 @@ void Client::run()
 	}
 
 break_out:
-	//sock.close(); // FIXME: We shouldn't theoretically need this, there is some race condition with RAII
 	fprintf(stdout, "%s:%u Disconnecting (%d)\n", host.c_str(), port, sfd);
 	fflush(stdout);
 	return;
