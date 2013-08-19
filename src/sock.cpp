@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
+#include <errno.h>
 
 
 using std::string;

@@ -78,6 +78,9 @@ bool Client::set_chunk_size(size_t bytes)
 {
 	bool success = false;
 
+	if (bytes > BUFFER_SIZE)
+		return false;
+
 	pthread_mutex_lock(&mutex);
 	if (state == STARTED || state == INIT)
 	{
@@ -89,6 +92,9 @@ bool Client::set_chunk_size(size_t bytes)
 			buf = temp;
 			buflen = bytes;
 			success = true;
+
+			for (unsigned i = 0; i < bytes; ++i)
+				buf[i] = 'A';
 		}
 	}
 	pthread_mutex_unlock(&mutex);
@@ -197,7 +203,7 @@ void Client::run()
 	bool full = false;
 
 	// Write loop
-	while (state == RUNNING && sock.connected())
+	while (state == RUNNING && sock.alive())
 	{
 		// Sleep for an interval
 		interval = ival;
@@ -207,7 +213,7 @@ void Client::run()
 		// Send a chunk of data
 		remaining = buflen;
 		sent = 0;
-		while (state == RUNNING && sock.connected() && remaining > 0)
+		while (state == RUNNING && sock.alive() && remaining > 0)
 		{
 			sent = send(sfd, buf, buflen, MSG_DONTWAIT);
 
