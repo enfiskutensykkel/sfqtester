@@ -138,29 +138,33 @@ int main(int argc, char** argv)
 	vector< shared_ptr<Stream> > conns;
 
 	// Create flows
-	if (optind < argc)
+	try
 	{
-		// Create a barrier
-		Barrier barrier(num_conns * (optind < argc) + 1);
-
-		for (unsigned i = 0; i < num_conns; ++i) 
+		if (optind < argc)
 		{
-		}
+			// Create a barrier
+			Barrier barrier(num_conns * (optind < argc) + 1);
 
-		// Synchronize with connections
-		barrier.wait();  
-	}
-	else
-	{
-		try
+			for (unsigned i = 0; i < num_conns; ++i) 
+			{
+				if (local_port != 0)
+					conns.push_back(shared_ptr<Stream>( new Client(barrier, argv[optind], remote_port + i, local_port + i) ));
+				else
+					conns.push_back(shared_ptr<Stream>( new Client(barrier, argv[optind], remote_port + i) ));
+			}
+
+			// Synchronize with connections
+			barrier.wait();  
+		}
+		else
 		{
 			conns.push_back(shared_ptr<Stream>( new Server(local_port, num_conns) ));
 		}
-		catch (const char* exception)
-		{
-			fprintf(stderr, "Unexpected error: %s\n", exception);
-			run = false;
-		}
+	}
+	catch (const char* exception)
+	{
+		fprintf(stderr, "Unexpected error: %s\n", exception);
+		run = false;
 	}
 	
 
@@ -168,11 +172,11 @@ int main(int argc, char** argv)
 	unsigned long time_left = duration * 1000;
 	timespec timeout = {0, 1000000L}; 
 
-	if (optind < argc && duration > 0) 
+	if (run && optind < argc && duration > 0) 
 	{
 		fprintf(stderr, "Running for %u seconds...\n", duration);
 	} 
-	else if (optind < argc) 
+	else if (run && optind < argc) 
 	{
 		fprintf(stderr, "Running...\n");
 	}

@@ -2,6 +2,7 @@
 #define __STREAMER_H__
 
 #include "sock.h"
+#include "barrier.h"
 #include <map>
 #include <tr1/cstdint>
 #include <pthread.h>
@@ -36,6 +37,23 @@ class Server: public Stream
 
 		static void accepter_thread(Server*);
 		static void receiver_thread(Server*);
+};
+
+
+
+class Client: public Stream
+{
+	public:
+		Client(Barrier& barrier, const char* hostname, uint16_t remote_port, uint16_t local_port = 0);
+		~Client(void);
+	
+	private:
+		enum { STARTED, STOPPED } state;
+		Barrier& barrier;
+		Sock sock;
+		pthread_t id;
+
+		static void run(Client*);
 };
 
 #endif
