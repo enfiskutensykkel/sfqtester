@@ -14,21 +14,17 @@
 
 Client::Client(Barrier& barr, const char* host, uint16_t rem_port, uint16_t loc_port)
 	: state(INIT), barrier(barr), hostname(host), remote_port(rem_port), local_port(loc_port),
-	  buf(NULL), buflen(BUFFER_SIZE), ival(0)
+	  buf(NULL), buflen(BUFFER_SIZE), ival(0), _active(false)
 {
-	// Allocate buffer memory
-	buf = new char[buflen];
-	if (buf == NULL)
-	{
-		throw "Out of memory";
-	}
-
 	// Initialize synchronization primitives
 	pthread_mutex_init(&mutex, NULL);
 	pthread_cond_init(&start_signal, NULL);
 	pthread_cond_init(&stop_signal, NULL);
 
-	pthread_mutex_lock(&mutex);
+	// Allocate buffer memory
+	if (!set_chunk_size(BUFFER_SIZE))
+		throw "Out of memory";
+
 
 	// Create thread attributes
 	pthread_attr_t attr;
@@ -38,6 +34,7 @@ Client::Client(Barrier& barr, const char* host, uint16_t rem_port, uint16_t loc_
 	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
 	// Try to create thread
+	pthread_mutex_lock(&mutex);
 	if (pthread_create(&id, &attr, (void* (*)(void*)) &dispatch, (void*) this) == 0)
 	{
 		// Hold until the created thread reaches a certain execution point
@@ -82,12 +79,13 @@ bool Client::set_chunk_size(size_t bytes)
 	bool success = false;
 
 	pthread_mutex_lock(&mutex);
-	if (state == STARTED)
+	if (state == STARTED || state == INIT)
 	{
 		char* temp = new char[bytes];
 		if (temp != NULL)
 		{
-			delete[] buf;
+			if (buf != NULL)
+				delete[] buf;
 			buf = temp;
 			buflen = bytes;
 			success = true;
@@ -255,14 +253,22 @@ void Client::dispatch(Client* client)
 	pthread_cond_wait(&client->start_signal, &client->mutex);
 
 	// Check if we are still good to go
-	bool run = client->state == RUNNING;
+	client->_active = client->state == RUNNING;
 
 	pthread_mutex_unlock(&client->mutex);
 
 	// Do the thread action
-	if (run)
+	if (client->_active)
 		client->run();
 
+	client->_active = false;
 	pthread_cond_signal(&client->stop_signal);
 	pthread_exit(NULL);
+}
+
+
+
+bool Client::active()
+{
+	return _active;
 }

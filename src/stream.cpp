@@ -3,3 +3,8 @@
 Stream::~Stream()
 {
 }
+
+bool Stream::active()
+{
+	return false;
+}

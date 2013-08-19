@@ -151,9 +151,10 @@ break_out:
 Server::Server(uint16_t port, unsigned conns)
 	: state(RUNNING), conns(conns), lfd(-1), events(NULL)
 {
-	pthread_attr_t attr;
+	// TODO: We only want to throw exceptions on fatal errors
 
 	// Create thread attributes
+	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	pthread_attr_setstacksize(&attr, 16000);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -227,3 +228,4 @@ Server::~Server()
 
 	free(events);
 }
+

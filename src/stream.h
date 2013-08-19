@@ -15,6 +15,7 @@ class Stream
 {
 	public:
 		virtual ~Stream(void);
+		virtual bool active(void);
 };
 
 
@@ -53,6 +54,8 @@ class Client: public Stream
 
 		void start(void);
 		void stop(void);
+
+		bool active(void);
 	
 	private:
 		enum { INIT, STARTED, RUNNING, STOPPED } state;
@@ -70,6 +73,7 @@ class Client: public Stream
 		char* buf;
 		size_t buflen;
 		unsigned ival;
+		bool _active;
 
 		void run(void);
 		static void dispatch(Client*);

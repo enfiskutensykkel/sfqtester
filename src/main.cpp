@@ -145,6 +145,7 @@ int main(int argc, char** argv)
 			// Create a barrier
 			Barrier barrier(num_conns * (optind < argc) + 1);
 
+			// Create connections
 			for (unsigned i = 0; i < num_conns; ++i) 
 			{
 				Client* client;
@@ -177,6 +178,17 @@ int main(int argc, char** argv)
 	}
 	
 
+	// Count number of established connections
+	unsigned established = 0;
+	for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); it != conns.end(); ++it)
+		established += (*it)->active();
+	
+	if (optind < argc)
+	{
+		fprintf(stderr, "%u out of %u connections established.\n", established, num_conns);
+		run = established > 0;
+	}
+
 	// Run until completion
 	unsigned long time_left = duration * 1000;
 	timespec timeout = {0, 1000000L}; 
@@ -200,11 +212,30 @@ int main(int argc, char** argv)
 
 			// Check if the time is up
 			if (--time_left == 0) 
-			{
 				break;
-			}
+		}
+
+		// Count number of established connections
+		if (optind < argc)
+		{
+			established = 0;
+			for (vector<shared_ptr<Stream> >::iterator it = conns.begin(); run && it != conns.end(); ++it)
+				established += (*it)->active();
+
+			// No active connections left, stop the program
+			if (established == 0)
+				break;
 		}
 	}
+
+	
+	// Output status
+	if (!run)
+		fprintf(stderr, "Aborted. Closing connections...\n");
+	else if (optind < argc && established == 0)
+		fprintf(stderr, "All connections closed by peer.\n");
+	else if (optind < argc && time_left == 0)
+		fprintf(stderr, "Completed. Closing connections...\n");
 
 	return 0;
 }
