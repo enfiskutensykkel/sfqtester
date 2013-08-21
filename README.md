@@ -8,6 +8,8 @@ The reason for SFQ to hash just the triplet (sender IP, receiver IP, receiver po
 Note
 ----
 
+This program is written for GNU/Linux. It uses `pthreads` and `epoll`, so it isn't very portable.
+
 As this program spawns a lot of threads, make sure that
   * the upper limit of threads a process is allowed to spawn is higher than the number of connections you try to make
   * the upper limit of thread stack size is high enough to allow for many connections
@@ -38,4 +40,4 @@ To start the program in client mode, start it with
 ./sfqtester -p <the first remote port> -c <number of connections> <remote host>
 ```
 
-If you want to bind to a local port as well, for analysis purposes, use the `-q` option.
+If you want to bind to a local port as well, for analysis purposes for example, use the `-q` option.
