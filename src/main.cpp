@@ -195,7 +195,6 @@ int main(int argc, char** argv)
 	// Run until completion
 	unsigned long time_left = duration * 1000;
 	timespec timeout = {0, 1000000L}; 
-	timespec yield = {0, 0};
 
 	if (run && optind < argc && duration > 0) 
 	{
@@ -208,8 +207,6 @@ int main(int argc, char** argv)
 
 	while (run && !conns.empty()) 
 	{
-		// Yield control
-		nanosleep(&yield, NULL);
 
 		// Sleep for a millisecond if a duration is set
 		if (optind < argc && duration > 0) 
@@ -219,6 +216,11 @@ int main(int argc, char** argv)
 			// Check if the time is up
 			if (--time_left == 0) 
 				break;
+		}
+		else
+		{
+			// Yield control by sleeping 1 ms
+			nanosleep(&timeout, NULL);
 		}
 
 		// Count number of established connections
