@@ -32,9 +32,10 @@ Client::Client(Barrier& barr, const char* host, uint16_t rem_port, uint16_t loc_
 	// Create thread attributes
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	pthread_attr_setstacksize(&attr, 16000);
+	pthread_attr_setstacksize(&attr, 1024);
 	//pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
 	// Try to create thread
@@ -162,7 +163,8 @@ void Client::stop()
 
 		// Wait for the thread to finish up
 		state = STOPPED;
-		pthread_join(id, NULL);
+		// TODO: FIXME: This will lead to a race condition
+		//pthread_join(id, NULL);
 	}
 	pthread_mutex_unlock(&mutex);
 }
