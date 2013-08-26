@@ -193,8 +193,8 @@ int main(int argc, char** argv)
 	}
 
 	// Run until completion
-	unsigned long time_left = duration * 1000;
-	timespec timeout = {0, 1000000L}; 
+	unsigned long time_left = duration;
+	timespec timeout = {1, 0}; 
 
 	if (run && optind < argc && duration > 0) 
 	{
